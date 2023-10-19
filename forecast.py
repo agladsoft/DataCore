@@ -89,5 +89,6 @@ class Forecast(object):
         self.write_to_json(df.to_dict('records'))
 
 
-export: Forecast = Forecast(sys.argv[1], sys.argv[2])
-export.main()
+if __name__ == '__main__':
+    export: Forecast = Forecast(sys.argv[1], sys.argv[2])
+    export.main()

@@ -1,4 +1,4 @@
-#!/bin/bash_dir
+#!/bin/bash
 
 xls_path="${XL_IDP_PATH_DATACORE}/flat_forecast"
 

@@ -26,6 +26,7 @@ headers_eng: dict = {
 dict_types: dict = {
     'Cargo GW, MT': str,
     "Cargo readiness": str
+
 }
 
 

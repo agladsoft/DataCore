@@ -25,6 +25,7 @@ headers_eng: dict = {
 }
 
 dict_types: dict = {
+    'размерность': int,
     'ктк': int,
     "TEU": int
 }

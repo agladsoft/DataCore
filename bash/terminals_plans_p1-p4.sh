@@ -1,8 +1,5 @@
 #!/bin/bash
 
-export XL_IDP_PATH_DATACORE=/home/timur/sambashare/DataCore
-export XL_IDP_ROOT_DATACORE=/home/timur/PycharmWork/DataCore
-
 xls_path="${XL_IDP_PATH_DATACORE}/flat_terminals_plans_p1-p4"
 
 done_path="${xls_path}"/done

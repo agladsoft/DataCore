@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 import json
@@ -45,6 +46,15 @@ class MarginIncomePlan(object):
         self.input_file_path: str = input_file_path
         self.output_folder: str = output_folder
 
+    def get_year_in_filename(self, df: DataFrame):
+        """
+        Getting the year at the beginning of the file.
+        """
+        if year := re.findall(r'\d{4}', os.path.basename(self.input_file_path)):
+            df['year'] = int(year[0])
+        else:
+            raise AssertionError('Year not found in file name!')
+
     @staticmethod
     def change_type_and_values(df: DataFrame) -> None:
         """
@@ -82,6 +92,7 @@ class MarginIncomePlan(object):
         df = df.dropna(axis=0, how='all')
         df = df.rename(columns=headers_eng)
         df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        self.get_year_in_filename(df)
         self.add_new_columns(df)
         self.change_type_and_values(df)
         df = df.replace({np.nan: None, "NaT": None})

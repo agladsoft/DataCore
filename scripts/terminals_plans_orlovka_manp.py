@@ -38,9 +38,9 @@ class TerminalsPlansOrlovkaManp(object):
         self.input_file_path: str = input_file_path
         self.output_folder: str = output_folder
 
-    def get_terminals_in_filename(self, df: DataFrame):
+    def get_terminal_in_filename(self, df: DataFrame):
         """
-        Check the date at the beginning of the file.
+        Getting the terminal at the beginning of the file.
         """
         # Преобразуем терминалы в верхний регистр и создаем регулярное выражение
         terminal_pattern = re.compile(rf"({'|'.join(terminals).upper()})", re.IGNORECASE)
@@ -95,7 +95,7 @@ class TerminalsPlansOrlovkaManp(object):
         df = df.dropna(axis=0, how='all')
         df = df.rename(columns=headers_eng)
         df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-        self.get_terminals_in_filename(df)
+        self.get_terminal_in_filename(df)
         self.add_new_columns(df)
         self.change_type_and_values(df)
         df = df.replace({np.nan: None, "NaT": None})

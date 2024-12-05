@@ -24,7 +24,7 @@ do
   echo "'${file} - ${mime_type}'"
 
 	# Will convert csv to json
-	python3 ${XL_IDP_ROOT_DATACORE}/border_crossing_plans.py "${file}" "${json_path}"
+	python3 ${XL_IDP_ROOT_DATACORE}/scripts/border_crossing_plans.py "${file}" "${json_path}"
 
   if [ $? -eq 0 ]
 	then

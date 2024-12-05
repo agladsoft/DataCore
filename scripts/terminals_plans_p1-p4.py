@@ -17,7 +17,7 @@ headers_eng: dict = {
     "ставка": "rate",
     "услуга": "service",
     "технология": "technology",
-    "СОИСПОЛНИТЕЛЬ": "co-executors",
+    "СОИСПОЛНИТЕЛЬ": "co_executors",
     "сектор": "sector",
     "источник": "source",
     "участок": "section",

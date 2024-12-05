@@ -41,7 +41,7 @@ month_mapping: dict = {
 date_formats: tuple = ("%Y-%m-%d", "%d.%m.%Y", "%Y-%m-%d %H:%M:%S")
 
 
-class MarginIncomePlan(object):
+class TerminalsPlansP1P4(object):
     def __init__(self, input_file_path: str, output_folder: str):
         self.input_file_path: str = input_file_path
         self.output_folder: str = output_folder
@@ -100,5 +100,5 @@ class MarginIncomePlan(object):
 
 
 if __name__ == '__main__':
-    table: MarginIncomePlan = MarginIncomePlan(sys.argv[1], sys.argv[2])
+    table: TerminalsPlansP1P4 = TerminalsPlansP1P4(sys.argv[1], sys.argv[2])
     table.main()

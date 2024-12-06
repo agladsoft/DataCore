@@ -1,6 +1,6 @@
 #!/bin/bash
 
-xls_path="${XL_IDP_PATH_DATACORE}/flat_forecast"
+xls_path="${XL_IDP_PATH_DATACORE}/flat_terminals_plans_p1-p4"
 
 done_path="${xls_path}"/done
 if [ ! -d "$done_path" ]; then
@@ -24,7 +24,7 @@ do
   echo "'${file} - ${mime_type}'"
 
 	# Will convert csv to json
-	python3 ${XL_IDP_ROOT_DATACORE}/scripts/forecast.py "${file}" "${json_path}"
+	python3 ${XL_IDP_ROOT_DATACORE}/scripts/terminals_plans_p1-p4.py "${file}" "${json_path}"
 
   if [ $? -eq 0 ]
 	then

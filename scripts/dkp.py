@@ -5,7 +5,7 @@ import app_logger
 import numpy as np
 import pandas as pd
 from re import Match
-from __init__dkp import *
+from settings_dkp import *
 from datetime import datetime
 from typing import List, Dict, Optional, Union, Hashable
 

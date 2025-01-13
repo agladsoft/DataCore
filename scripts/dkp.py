@@ -437,13 +437,13 @@ class DKP(object):
         """
         logger.info(f'File - {self.basename_filename}. Datetime - {datetime.now()}')
         # Match department
-        dkp_pattern: str = '|'.join(map(re.escape, DKP_NAMES))
+        dkp_pattern: str = '|'.join(map(re.escape, DKP_NAMES.keys()))
         department_match: Match = re.search(rf'{dkp_pattern}', self.basename_filename)
         if not department_match:
             self.send_error(
                 message='Error code 10: Department не указан в файле! Файл:', error_code=10
             )
-        metadata: dict = {'department': department_match.group(0)}
+        metadata: dict = {'department': DKP_NAMES[f"{department_match.group(0)}"]}
         # Match year
         year_match: Match = re.search(r'\d{4}', self.basename_filename)
         if not year_match:

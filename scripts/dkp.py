@@ -547,4 +547,3 @@ if __name__ == "__main__":
     dkp: DKP = DKP(os.path.abspath(sys.argv[1]), sys.argv[2])
     dkp.main()
     logger.info(f"{os.path.basename(sys.argv[1])} has finished processing")
-

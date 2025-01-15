@@ -9,6 +9,7 @@ from scripts.settings_dkp import *
 from scripts.app_logger import get_logger
 from typing import List, Dict, Optional, Union, Hashable
 
+
 logger: get_logger = get_logger(os.path.basename(__file__).replace(".py", ""))
 
 

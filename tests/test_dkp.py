@@ -2,6 +2,7 @@ import os
 import pytest
 from scripts.dkp import DKP
 from pathlib import PosixPath
+from typing import Optional, Union
 from _pytest.logging import LogCaptureFixture
 
 dir_path: str = f"{os.environ['XL_IDP_PATH_DATACORE']}/dkp"
@@ -32,13 +33,35 @@ def test_is_digit(dkp_instance: DKP) -> None:
     :param dkp_instance: An instance of the DKP class.
     :return: None
     """
+    # Тестирование базовых чисел
     assert dkp_instance._is_digit("123.45") is True
+    assert dkp_instance._is_digit("-123.45") is True
+    assert dkp_instance._is_digit("+123.45") is True
+
+    # Тестирование научной нотации
+    assert dkp_instance._is_digit("1e-10") is True
+    assert dkp_instance._is_digit("1.23e+4") is True
+    assert dkp_instance._is_digit("1E6") is True
+
+    # Тестирование чисел с запятыми и пробелами
+    assert dkp_instance._is_digit("1,234.56") is True
+    assert dkp_instance._is_digit("12 34") is True
+    assert dkp_instance._is_digit(" 123.45 ") is True
+
+    # Тестирование некорректных входных данных
     assert dkp_instance._is_digit("abc") is False
     assert dkp_instance._is_digit("abc123") is False
-    assert dkp_instance._is_digit("12 34") is True
+    assert dkp_instance._is_digit("12.34.56") is False
+    assert dkp_instance._is_digit("12..34") is False
+    assert dkp_instance._is_digit("") is False
 
 
-def test_merge_two_dicts(dkp_instance: DKP) -> None:
+@pytest.mark.parametrize("dict1, dict2, expected", [
+    ({"key1": "value1"}, {"key2": "value2"}, {"key1": "value1", "key2": "value2"}),
+    ({"a": 1, "b": 2}, {"c": 3}, {"a": 1, "b": 2, "c": 3}),
+    ({"name": "Alice"}, {"age": 30}, {"name": "Alice", "age": 30})
+])
+def test_merge_two_dicts(dkp_instance: DKP, dict1: dict, dict2: dict, expected: dict) -> None:
     """
     Tests the `_merge_two_dicts` method.
 
@@ -48,13 +71,19 @@ def test_merge_two_dicts(dkp_instance: DKP) -> None:
     :param dkp_instance: A DKP object.
     :return: None
     """
-    dict1: dict = {"key1": "value1"}
-    dict2: dict = {"key2": "value2"}
     merged: dict = dkp_instance._merge_two_dicts(dict1, dict2)
-    assert merged == {"key1": "value1", "key2": "value2"}
+    assert merged == expected
 
 
-def test_remove_symbols_in_columns(dkp_instance: DKP) -> None:
+@pytest.mark.parametrize("input_str, expected_result", [
+    ("  test   string\n", "test string"),
+    ("\n  hello world \n", "hello world"),
+    (" \t some text \t ", "some text"),
+    ("no extra spaces or newlines", "no extra spaces or newlines"),
+    ("   \n  multiple  \n  spaces  ", "multiple spaces"),
+    ("\n\n  \t only spaces and newlines  \n\n", "only spaces and newlines")
+])
+def test_remove_symbols_in_columns(dkp_instance: DKP, input_str: str, expected_result: str) -> None:
     """
     Tests the `_remove_symbols_in_columns` method.
 
@@ -62,38 +91,58 @@ def test_remove_symbols_in_columns(dkp_instance: DKP) -> None:
     from a string. It checks that the method returns a string with the expected value.
 
     :param dkp_instance: A DKP object.
+    :param input_str: The input string to process.
+    :param expected_result: The expected result after removing extra spaces and newlines.
     :return: None
     """
-    result: str = dkp_instance._remove_symbols_in_columns("  test   string\n")
-    assert result == "test string"
+    result: str = dkp_instance._remove_symbols_in_columns(input_str)
+    assert result == expected_result
 
 
-def test_convert_value(dkp_instance: DKP) -> None:
+@pytest.mark.parametrize("input_value, expected_output", [
+    ("123.45", 123.45),
+    ("12 3.45", 123.45),
+    ("12 34", 1234),
+    ("1234", 1234),
+    ("abc", "abc"),
+    ("abc123", "abc123"),
+    ("Да", True),
+    ("да", True),
+    ("yes", True),
+    ("Нет", False),
+    ("нет", False),
+    ("no", False),
+    (None, None)
+])
+def test_convert_value(
+    dkp_instance: DKP,
+    input_value: Optional[str],
+    expected_output: Union[float, str, bool, None]
+) -> None:
     """
     Tests the `_convert_value` method.
 
-    This test verifies that the method correctly removes extra spaces and newline characters
-    from a string. It checks that the method returns a string with the expected value.
+    This test verifies that the method correctly converts values to their expected types:
+    strings, integers, booleans, or returns `None`.
 
     :param dkp_instance: A DKP object.
     :return: None
     """
-    assert dkp_instance._convert_value("123.45") == 123.45
-    assert dkp_instance._convert_value("12 3.45") == 123.45
-    assert dkp_instance._convert_value("12 34") == 1234
-    assert dkp_instance._convert_value("1234") == 1234
-    assert dkp_instance._convert_value("abc") == "abc"
-    assert dkp_instance._convert_value("abc123") == "abc123"
-    assert dkp_instance._convert_value("Да") is True
-    assert dkp_instance._convert_value("да") is True
-    assert dkp_instance._convert_value("yes") is True
-    assert dkp_instance._convert_value("Нет") is False
-    assert dkp_instance._convert_value("нет") is False
-    assert dkp_instance._convert_value("no") is False
-    assert dkp_instance._convert_value(None) is None
+    result = dkp_instance._convert_value(input_value)
+    assert result == expected_output
 
 
-def test_extract_metadata_from_filename(dkp_instance: DKP) -> None:
+@pytest.mark.parametrize("basename_filename, expected", [
+    ("ДКП_ДВ_ПП_2025_v6_11.10.xlsx", {"department": "ДКП ДВ", "year": 2025}),
+    ("ДКП_Сибирь_ПП_2025_v4.xlsx", {"department": "ДКП Сибирь", "year": 2025}),
+    ("ДКП_Урал_ПП_2025 v6.xlsx", {"department": "ДКП Урал", "year": 2025}),
+    ("ДКП_Центр Восток_ПП_2025_v.3.xlsx", {"department": "ДКП Центр Восток", "year": 2025}),
+    ("ДКП ЮФО_ПП_2024_импорт_v7 от 27.09.2023.xlsx", {"department": "ДКП ЮФО", "year": 2024}),
+    ("ДКП_ЮФО_ПП_2024_ОП_v3 от 27.09.2023.xlsx", {"department": "ДКП ЮФО", "year": 2024}),
+    ("ДКП_ЮФО_ПП_2024_экспорт_FC от 13.10.2023.xlsx", {"department": "ДКП ЮФО", "year": 2024}),
+    ("СПБ_ДКП СЗФО_ПП_2024.v.10.xlsx", {"department": "ДКП СЗФО", "year": 2024})
+])
+def test_extract_metadata_from_filename(dkp_instance: DKP, basename_filename: str, expected: dict) -> None:
     """
     Tests the `extract_metadata_from_filename` method.
 
@@ -103,12 +152,22 @@ def test_extract_metadata_from_filename(dkp_instance: DKP) -> None:
     :param dkp_instance: A DKP object.
     :return: None
     """
+    dkp_instance.basename_filename = basename_filename
     metadata: dict = dkp_instance.extract_metadata_from_filename()
-    assert metadata["department"] == "ДКП ЮФО"
-    assert metadata["year"] == 2024
+    assert metadata == expected
 
 
-def test_get_probability_of_header(dkp_instance: DKP) -> None:
+@pytest.mark.parametrize("row, expected_min_count", [
+    ([
+        'организация', 'клиент', 'стратегич. проект', 'груз',
+        'направление', 'бассейн', 'принадлежность ктк', 'разм'
+    ], 7),
+    ([
+        'организация', 'клиент', 'описание', 'стратегич. проект', 'груз',
+        'направление', 'бассейн', 'принадлежность ктк', 'разм'
+    ], 8),
+])
+def test_get_probability_of_header(dkp_instance: DKP, row: list, expected_min_count: int) -> None:
     """
     Tests the `_get_probability_of_header` method.
 
@@ -117,15 +176,13 @@ def test_get_probability_of_header(dkp_instance: DKP) -> None:
     when given a row with the expected column names.
 
     :param dkp_instance: A DKP object.
+    :param row: The row to check for header probability.
+    :param expected_min_count: The expected minimum count of matching columns for a header.
     :return: None
     """
-    row: list = [
-        'организация', 'клиент', 'стратегич. проект', 'груз',
-        'направление', 'бассейн', 'принадлежность ктк', 'разм'
-    ]
     list_columns: list = dkp_instance._get_list_columns()
-    probability: float = dkp_instance._get_probability_of_header(row, list_columns)
-    assert probability >= 87
+    count_match_header: float = dkp_instance._get_count_match_of_header(row, list_columns)
+    assert count_match_header >= expected_min_count
 
 
 def test_check_errors_in_columns(dkp_instance: DKP, caplog: LogCaptureFixture) -> None:
@@ -169,7 +226,7 @@ def test_write_to_json(dkp_instance: DKP, tmp_path: PosixPath) -> None:
     assert '"client": "Test Client"' in content
 
 
-def setup_column_positions(dkp_instance, columns_positions):
+def setup_column_positions(dkp_instance: DKP, columns_positions: dict) -> None:
     """
     Sets up the column positions in the DKP instance.
 

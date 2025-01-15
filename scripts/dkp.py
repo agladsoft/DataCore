@@ -175,7 +175,7 @@ class DKP(object):
         :return: True if x can be converted to a float, False otherwise.
         """
         try:
-            float(re.sub(r'(?<=\d) (?=\d)', '', x))
+            float(re.sub(r'\s|,', '', x))
             return True
         except ValueError:
             return False
@@ -221,27 +221,25 @@ class DKP(object):
         :return: The cleaned string with extra spaces and newline characters removed.
         """
         if row and isinstance(row, str):
-            row: str = re.sub(r" +", " ", row).strip()
-            row: str = re.sub(r"\n", " ", row).strip()
+            row: str = re.sub(r'\s+', ' ', row).strip()
         return row
 
-    def _get_probability_of_header(self, row: list, list_columns: list) -> int:
+    def _get_count_match_of_header(self, row: list, list_columns: list) -> int:
         """
-        Calculates the probability that a given row is a header.
+        Counts the number of columns in a row that match with a list of column names.
 
-        This method takes a row (a list of strings) and a list of column names,
-        removes any extra spaces and newline characters from the strings in the row,
-        and then counts how many of the strings in the row are in the list of column names.
-        The count is then divided by the length of the row, and the result is multiplied by 100
-        to get a percentage. The percentage is then returned as an integer.
+        This method takes a row and a list of column names and returns the count of columns
+        in the row that match with the column names. It first removes extra spaces and newline
+        characters from the row, and then counts the number of columns that match with the
+        list of column names.
 
-        :param row: The row to calculate the probability for.
-        :param list_columns: The list of column names.
-        :return: The probability that the given row is a header, as an integer between 0 and 100.
+        :param row: The row in which to count the columns.
+        :param list_columns: The list of column names to match with.
+        :return: The count of columns in the row that match with the list of column names.
         """
         row: list = list(map(self._remove_symbols_in_columns, row))
         count: int = sum(element in list_columns for element in row)
-        return int(count / len(row) * 100)
+        return count
 
     def get_columns_position(self, row: list, block_position: list, headers: dict, dict_columns_position) -> None:
         """
@@ -428,7 +426,7 @@ class DKP(object):
             return value
 
         try:
-            sub_value = re.sub(r'(?<=\d) (?=\d)', '', value)
+            sub_value = re.sub(r'\s|,', '', value)
             return float(sub_value) if '.' in sub_value else int(sub_value)
         except (ValueError, TypeError) as e:
             logger.warning(
@@ -657,7 +655,7 @@ class DKP(object):
         telegram(error_message)
         sys.exit(error_code)
 
-    def parse_sheet(self, df: pd.DataFrame, coefficient_of_header: int = 3) -> None:
+    def parse_sheet(self, df: pd.DataFrame, count_match_header: int = 7) -> None:
         """
         Parse a sheet of Excel file.
 
@@ -671,7 +669,7 @@ class DKP(object):
         and then exits with the error code 5.
 
         :param df: The pandas DataFrame representing the sheet of the Excel file.
-        :param coefficient_of_header: The coefficient to determine if a row is a header or not.
+        :param count_match_header: The coefficient to determine if a row is a header or not.
         :return: None
         """
         list_data: list = []
@@ -680,7 +678,7 @@ class DKP(object):
         index: Union[int, Hashable]
         for index, row in df.iterrows():
             row = list(row.to_dict().values())
-            if self._get_probability_of_header(row, list_columns) > coefficient_of_header:
+            if self._get_count_match_of_header(row, list_columns) >= count_match_header:
                 self.check_errors_in_header(row)
             elif not self.dict_columns_position["client"]:
                 self.get_columns_position(row, [0, len(row)], BLOCK_NAMES, self.dict_block_position)

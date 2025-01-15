@@ -61,8 +61,7 @@ def group_nested_columns(
     group_index: int,
     column_index: int,
     filter_key: int,
-    filter_value: str,
-    sort_index = 4
+    filter_value: str
 ):
     """
     Groups nested columns of a given `reference` by specified indices.
@@ -137,6 +136,7 @@ BLOCK_TABLE_COLUMNS: dict = group_nested_columns(
 )
 
 NOT_COUNT_BLOCK: list = ["natural_indicators_ktk", "natural_indicators_teus"]
+FILTER_SUFFIXES: tuple = ('_separation', '_fee', '_value_money', '_tax')
 
 DATE_FORMATS: list = [
     "%m/%d/%y",

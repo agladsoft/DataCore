@@ -31,7 +31,7 @@ class DKP(object):
                 for field, sub_keys in BLOCK_TABLE_COLUMNS.items()
                 if field not in NOT_COUNT_BLOCK
                 for sub_key in sub_keys.keys()
-                if sub_key.endswith(('_separation', '_fee', '_value_money', '_tax'))
+                if sub_key.endswith(FILTER_SUFFIXES)
             ]
         ]
         self.dict_columns_position: Dict[str, Optional[int]] = {
@@ -54,14 +54,27 @@ class DKP(object):
         }
 
     @staticmethod
-    def _is_digit(x: str) -> bool:
+    def _clean_number(value: str) -> Union[float, int]:
+        """
+        Clean a given string by removing all characters that are not digits, decimal points, or minus signs.
+        Then convert the cleaned string to a float if it contains a decimal point, or an int otherwise.
+        :param value: The string to clean and convert.
+        :return: The cleaned and converted value, as a float or an int.
+        """
+        cleaned = re.sub(NUMBER_CLEANING_PATTERN, '', value)
+        if '.' in cleaned or 'e' in cleaned.lower():
+            return float(cleaned)
+        else:
+            return int(cleaned)
+
+    def _is_digit(self, x: str) -> bool:
         """
         Checks if a given string can be converted to a float.
         :param x: The string to check.
         :return: True if x can be converted to a float, False otherwise.
         """
         try:
-            float(re.sub(NUMBER_CLEANING_PATTERN, '', x))
+            self._clean_number(x)
             return True
         except ValueError:
             return False
@@ -312,8 +325,7 @@ class DKP(object):
             return value
 
         try:
-            sub_value = re.sub(NUMBER_CLEANING_PATTERN, '', value)
-            return float(sub_value) if '.' in sub_value else int(sub_value)
+            return self._clean_number(value)
         except (ValueError, TypeError) as e:
             logger.warning(
                 f"Failed to convert value '{value}' to number: {str(e)}. "

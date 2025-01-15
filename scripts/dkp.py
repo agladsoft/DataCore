@@ -1,15 +1,15 @@
 import re
 import sys
 import json
-import app_logger
 import numpy as np
 import pandas as pd
 from re import Match
-from settings_dkp import *
 from datetime import datetime
+from scripts.settings_dkp import *
+from scripts.app_logger import get_logger
 from typing import List, Dict, Optional, Union, Hashable
 
-logger: app_logger = app_logger.get_logger(os.path.basename(__file__).replace(".py", ""))
+logger: get_logger = get_logger(os.path.basename(__file__).replace(".py", ""))
 
 
 class JsonEncoder(json.JSONEncoder):
@@ -175,7 +175,7 @@ class DKP(object):
         :return: True if x can be converted to a float, False otherwise.
         """
         try:
-            float(re.sub(r'(?<=\d) (?=\d)', '', x))
+            float(re.sub(r'\s|,', '', x))
             return True
         except ValueError:
             return False
@@ -221,27 +221,25 @@ class DKP(object):
         :return: The cleaned string with extra spaces and newline characters removed.
         """
         if row and isinstance(row, str):
-            row: str = re.sub(r" +", " ", row).strip()
-            row: str = re.sub(r"\n", " ", row).strip()
+            row: str = re.sub(r'\s+', ' ', row).strip()
         return row
 
-    def _get_probability_of_header(self, row: list, list_columns: list) -> int:
+    def _get_count_match_of_header(self, row: list, list_columns: list) -> int:
         """
-        Calculates the probability that a given row is a header.
+        Counts the number of columns in a row that match with a list of column names.
 
-        This method takes a row (a list of strings) and a list of column names,
-        removes any extra spaces and newline characters from the strings in the row,
-        and then counts how many of the strings in the row are in the list of column names.
-        The count is then divided by the length of the row, and the result is multiplied by 100
-        to get a percentage. The percentage is then returned as an integer.
+        This method takes a row and a list of column names and returns the count of columns
+        in the row that match with the column names. It first removes extra spaces and newline
+        characters from the row, and then counts the number of columns that match with the
+        list of column names.
 
-        :param row: The row to calculate the probability for.
-        :param list_columns: The list of column names.
-        :return: The probability that the given row is a header, as an integer between 0 and 100.
+        :param row: The row in which to count the columns.
+        :param list_columns: The list of column names to match with.
+        :return: The count of columns in the row that match with the list of column names.
         """
         row: list = list(map(self._remove_symbols_in_columns, row))
         count: int = sum(element in list_columns for element in row)
-        return int(count / len(row) * 100)
+        return count
 
     def get_columns_position(self, row: list, block_position: list, headers: dict, dict_columns_position) -> None:
         """
@@ -376,6 +374,84 @@ class DKP(object):
         with open(output_file_path, 'w', encoding='utf-8') as f:
             json.dump(list_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
 
+    def _extract_value(self, rows: list, column: str) -> Optional[str]:
+        """
+        Extracts a value from a specified column in a list of rows.
+
+        This method attempts to retrieve a value from the specified column
+        in the provided list of rows. It checks the position of the column
+        within the rows using a dictionary of column positions. If the
+        position is invalid or exceeds the length of the rows, it returns
+        None. Otherwise, it returns the value from the specified position,
+        stripping any leading or trailing whitespace if the value is not None.
+
+        :param rows: The list of rows to extract the value from.
+        :param column: The name of the column to extract the value from.
+        :return: The extracted value as a string with whitespace removed,
+        or None if the position is invalid or the value is None.
+        """
+        position: int = self.dict_columns_position.get(column)
+        if position is None or position >= len(rows):
+            return None
+        value: str = rows[position]
+        return value.strip() if value else None
+
+    def _convert_value(self, value: Optional[str]) -> Union[str, float, int, bool, None]:
+        """
+        Converts the given value to a number if possible.
+
+        This method takes a string and tries to convert it to a number.
+        If the string is not a number, it returns the original string.
+        If the string is a number, it returns a float if the number has a decimal point,
+        or an int otherwise.
+
+        If the string is None, it returns None.
+
+        If the string is "yes" or "да", it returns True.
+        If the string is "no" or "нет", it returns False.
+
+        :param value: The string to convert to a number.
+        :return: The converted value, or the original value if it could not be converted.
+        """
+        if value is None:
+            return None
+
+        lower_value: str = value.lower()
+        if lower_value in {"да", "yes"}:
+            return True
+        elif lower_value in {"нет", "no"}:
+            return False
+
+        if not self._is_digit(value):
+            return value
+
+        try:
+            sub_value = re.sub(r'\s|,', '', value)
+            return float(sub_value) if '.' in sub_value else int(sub_value)
+        except (ValueError, TypeError) as e:
+            logger.warning(
+                f"Failed to convert value '{value}' to number: {str(e)}. "
+                f"Returning original value."
+            )
+            return value
+
+    def parse_value(self, rows: list, column: str) -> Union[str, float, int, bool, None]:
+        """
+        Extracts and converts a value from the given row.
+
+        This method takes a list of rows and a column name,
+        extracts the value from the row using the column name,
+        and converts the value to a number if possible.
+
+        The conversion is done by the `_convert_value` method.
+
+        :param rows: The list of rows to extract the value from.
+        :param column: The column name to extract the value from.
+        :return: The extracted and converted value, or None if the value is not found or cannot be converted.
+        """
+        raw_value: Optional[str] = self._extract_value(rows, column)
+        return self._convert_value(raw_value)
+
     def get_content_in_table(
         self,
         index: Union[int, Hashable],
@@ -399,161 +475,132 @@ class DKP(object):
         :param metadata: Additional metadata extracted earlier in the process.
         :return: A dictionary containing parsed and processed data from the row.
         """
-
-        def parse_value(rows: list, column: str) -> Union[str, float, int, bool, None]:
-            if self.dict_columns_position[column] is None:
-                return None
-
-            value: Optional[str] = rows[self.dict_columns_position[column]]
-            if not value:
-                return None
-
-            stripped_value: str = value.strip()
-
-            # Приведение к булевому значению
-            lower_value: str = stripped_value.lower()
-            if lower_value in {"да", "yes"}:
-                return True
-            elif lower_value in {"нет", "no"}:
-                return False
-
-            # Проверка, является ли значение числом
-            if not self._is_digit(stripped_value):
-                return stripped_value
-
-            try:
-                return float(stripped_value) if '.' in stripped_value else int(stripped_value)
-            except (ValueError, TypeError) as e:
-                logger.warning(
-                    f"Failed to convert value '{stripped_value}' to number: {str(e)}. "
-                    f"Returning original stripped string."
-                )
-                return stripped_value
-
         logger.info(f'row {index} is {row}')
         parsed_record: dict = {
-            "client": parse_value(row, "client"),
-            "description": parse_value(row, "description"),
-            "project": parse_value(row, "project"),
-            "cargo": parse_value(row, "cargo"),
-            "direction": parse_value(row, "direction"),
-            "bay": parse_value(row, "bay"),
-            "owner": parse_value(row, "owner"),
-            "container_size": parse_value(row, "container_size"),
+            "client": self.parse_value(row, "client"),
+            "description": self.parse_value(row, "description"),
+            "project": self.parse_value(row, "project"),
+            "cargo": self.parse_value(row, "cargo"),
+            "direction": self.parse_value(row, "direction"),
+            "bay": self.parse_value(row, "bay"),
+            "owner": self.parse_value(row, "owner"),
+            "container_size": self.parse_value(row, "container_size"),
             "month": index_month,
             "month_string": month_string,
             "date": f"{metadata['year']}-{index_month:02d}-01",
 
             "container_count": next((
-                parse_value(row, key)
+                self.parse_value(row, key)
                 for key, val in BLOCK_TABLE_COLUMNS["natural_indicators_ktk"].items()
                 if month_string in val
             ), None),
             "teu": next((
-                parse_value(row, key)
+                self.parse_value(row, key)
                 for key, val in BLOCK_TABLE_COLUMNS["natural_indicators_teus"].items()
                 if month_string in val
             ), None),
 
-            "co_executor_rate_per_unite_marine": parse_value(row, "co_executor_rate_per_unite_marine"),
-            "co_executor_rate_per_unite_port": parse_value(row, "co_executor_rate_per_unite_port"),
-            "co_executor_rate_per_unite_terminal1": parse_value(row, "co_executor_rate_per_unite_terminal1"),
-            "co_executor_rate_per_unite_terminal2": parse_value(row, "co_executor_rate_per_unite_terminal2"),
-            "co_executor_rate_per_unite_other_terminal": parse_value(row, "co_executor_rate_per_unite_other_terminal"),
-            "co_executor_rate_per_unite_avto1": parse_value(row, "co_executor_rate_per_unite_avto1"),
-            "co_executor_rate_per_unite_avto2": parse_value(row, "co_executor_rate_per_unite_avto2"),
-            "co_executor_rate_per_unite_avto3": parse_value(row, "co_executor_rate_per_unite_avto3"),
-            "co_executor_rate_per_unite_rzhd1": parse_value(row, "co_executor_rate_per_unite_rzhd1"),
-            "co_executor_rate_per_unite_rzhd2": parse_value(row, "co_executor_rate_per_unite_rzhd2"),
-            "co_executor_rate_per_unite_custom": parse_value(row, "co_executor_rate_per_unite_custom"),
-            "co_executor_rate_per_unite_demurrage": parse_value(row, "co_executor_rate_per_unite_demurrage"),
-            "co_executor_rate_per_unite_storage": parse_value(row, "co_executor_rate_per_unite_storage"),
-            "co_executor_rate_per_unite_other1": parse_value(row, "co_executor_rate_per_unite_other1"),
-            "co_executor_rate_per_unite_other2": parse_value(row, "co_executor_rate_per_unite_other2"),
-            "co_executor_rate_per_unite_separation": parse_value(row, "co_executor_rate_per_unite_separation"),
-            "co_executor_rate_per_unite_fee": parse_value(row, "co_executor_rate_per_unite_fee"),
-            "co_executor_rate_per_unite_value_money": parse_value(row, "co_executor_rate_per_unite_value_money"),
-            "co_executor_rate_per_unite_tax": parse_value(row, "co_executor_rate_per_unite_tax"),
+            "co_executor_rate_per_unite_marine": self.parse_value(row, "co_executor_rate_per_unite_marine"),
+            "co_executor_rate_per_unite_port": self.parse_value(row, "co_executor_rate_per_unite_port"),
+            "co_executor_rate_per_unite_terminal1": self.parse_value(row, "co_executor_rate_per_unite_terminal1"),
+            "co_executor_rate_per_unite_terminal2": self.parse_value(row, "co_executor_rate_per_unite_terminal2"),
+            "co_executor_rate_per_unite_other_terminal": self.parse_value(
+                row, "co_executor_rate_per_unite_other_terminal"
+            ),
+            "co_executor_rate_per_unite_avto1": self.parse_value(row, "co_executor_rate_per_unite_avto1"),
+            "co_executor_rate_per_unite_avto2": self.parse_value(row, "co_executor_rate_per_unite_avto2"),
+            "co_executor_rate_per_unite_avto3": self.parse_value(row, "co_executor_rate_per_unite_avto3"),
+            "co_executor_rate_per_unite_rzhd1": self.parse_value(row, "co_executor_rate_per_unite_rzhd1"),
+            "co_executor_rate_per_unite_rzhd2": self.parse_value(row, "co_executor_rate_per_unite_rzhd2"),
+            "co_executor_rate_per_unite_custom": self.parse_value(row, "co_executor_rate_per_unite_custom"),
+            "co_executor_rate_per_unite_demurrage": self.parse_value(row, "co_executor_rate_per_unite_demurrage"),
+            "co_executor_rate_per_unite_storage": self.parse_value(row, "co_executor_rate_per_unite_storage"),
+            "co_executor_rate_per_unite_other1": self.parse_value(row, "co_executor_rate_per_unite_other1"),
+            "co_executor_rate_per_unite_other2": self.parse_value(row, "co_executor_rate_per_unite_other2"),
+            "co_executor_rate_per_unite_separation": self.parse_value(row, "co_executor_rate_per_unite_separation"),
+            "co_executor_rate_per_unite_fee": self.parse_value(row, "co_executor_rate_per_unite_fee"),
+            "co_executor_rate_per_unite_value_money": self.parse_value(row, "co_executor_rate_per_unite_value_money"),
+            "co_executor_rate_per_unite_tax": self.parse_value(row, "co_executor_rate_per_unite_tax"),
 
-            "unit_margin_income_marine": parse_value(row, "unit_margin_income_marine"),
-            "unit_margin_income_port": parse_value(row, "unit_margin_income_port"),
-            "unit_margin_income_terminal1": parse_value(row, "unit_margin_income_terminal1"),
-            "unit_margin_income_terminal2": parse_value(row, "unit_margin_income_terminal2"),
-            "unit_margin_income_other_terminal": parse_value(row, "unit_margin_income_other_terminal"),
-            "unit_margin_income_avto1": parse_value(row, "unit_margin_income_avto1"),
-            "unit_margin_income_avto2": parse_value(row, "unit_margin_income_avto2"),
-            "unit_margin_income_avto3": parse_value(row, "unit_margin_income_avto3"),
-            "unit_margin_income_rzhd1": parse_value(row, "unit_margin_income_rzhd1"),
-            "unit_margin_income_rzhd2": parse_value(row, "unit_margin_income_rzhd2"),
-            "unit_margin_income_custom": parse_value(row, "unit_margin_income_custom"),
-            "unit_margin_income_demurrage": parse_value(row, "unit_margin_income_demurrage"),
-            "unit_margin_income_storage": parse_value(row, "unit_margin_income_storage"),
-            "unit_margin_income_other1": parse_value(row, "unit_margin_income_other1"),
-            "unit_margin_income_other2": parse_value(row, "unit_margin_income_other2"),
-            "unit_margin_income_separation": parse_value(row, "unit_margin_income_separation"),
-            "unit_margin_income_fee": parse_value(row, "unit_margin_income_fee"),
-            "unit_margin_income_value_money": parse_value(row, "unit_margin_income_value_money"),
-            "unit_margin_income_tax": parse_value(row, "unit_margin_income_tax"),
+            "unit_margin_income_marine": self.parse_value(row, "unit_margin_income_marine"),
+            "unit_margin_income_port": self.parse_value(row, "unit_margin_income_port"),
+            "unit_margin_income_terminal1": self.parse_value(row, "unit_margin_income_terminal1"),
+            "unit_margin_income_terminal2": self.parse_value(row, "unit_margin_income_terminal2"),
+            "unit_margin_income_other_terminal": self.parse_value(row, "unit_margin_income_other_terminal"),
+            "unit_margin_income_avto1": self.parse_value(row, "unit_margin_income_avto1"),
+            "unit_margin_income_avto2": self.parse_value(row, "unit_margin_income_avto2"),
+            "unit_margin_income_avto3": self.parse_value(row, "unit_margin_income_avto3"),
+            "unit_margin_income_rzhd1": self.parse_value(row, "unit_margin_income_rzhd1"),
+            "unit_margin_income_rzhd2": self.parse_value(row, "unit_margin_income_rzhd2"),
+            "unit_margin_income_custom": self.parse_value(row, "unit_margin_income_custom"),
+            "unit_margin_income_demurrage": self.parse_value(row, "unit_margin_income_demurrage"),
+            "unit_margin_income_storage": self.parse_value(row, "unit_margin_income_storage"),
+            "unit_margin_income_other1": self.parse_value(row, "unit_margin_income_other1"),
+            "unit_margin_income_other2": self.parse_value(row, "unit_margin_income_other2"),
+            "unit_margin_income_separation": self.parse_value(row, "unit_margin_income_separation"),
+            "unit_margin_income_fee": self.parse_value(row, "unit_margin_income_fee"),
+            "unit_margin_income_value_money": self.parse_value(row, "unit_margin_income_value_money"),
+            "unit_margin_income_tax": self.parse_value(row, "unit_margin_income_tax"),
 
-            "service_marine": parse_value(row, "service_marine"),
-            "service_port": parse_value(row, "service_port"),
-            "service_terminal1": parse_value(row, "service_terminal1"),
-            "service_terminal2": parse_value(row, "service_terminal2"),
-            "service_other_terminal": parse_value(row, "service_other_terminal"),
-            "service_avto1": parse_value(row, "service_avto1"),
-            "service_avto2": parse_value(row, "service_avto2"),
-            "service_avto3": parse_value(row, "service_avto3"),
-            "service_rzhd1": parse_value(row, "service_rzhd1"),
-            "service_rzhd2": parse_value(row, "service_rzhd2"),
-            "service_custom": parse_value(row, "service_custom"),
-            "service_demurrage": parse_value(row, "service_demurrage"),
-            "service_storage": parse_value(row, "service_storage"),
-            "service_other1": parse_value(row, "service_other1"),
-            "service_other2": parse_value(row, "service_other2"),
-            "service_separation": parse_value(row, "service_separation"),
-            "service_fee": parse_value(row, "service_fee"),
-            "service_value_money": parse_value(row, "service_value_money"),
-            "service_tax": parse_value(row, "service_tax"),
+            "service_marine": self.parse_value(row, "service_marine"),
+            "service_port": self.parse_value(row, "service_port"),
+            "service_terminal1": self.parse_value(row, "service_terminal1"),
+            "service_terminal2": self.parse_value(row, "service_terminal2"),
+            "service_other_terminal": self.parse_value(row, "service_other_terminal"),
+            "service_avto1": self.parse_value(row, "service_avto1"),
+            "service_avto2": self.parse_value(row, "service_avto2"),
+            "service_avto3": self.parse_value(row, "service_avto3"),
+            "service_rzhd1": self.parse_value(row, "service_rzhd1"),
+            "service_rzhd2": self.parse_value(row, "service_rzhd2"),
+            "service_custom": self.parse_value(row, "service_custom"),
+            "service_demurrage": self.parse_value(row, "service_demurrage"),
+            "service_storage": self.parse_value(row, "service_storage"),
+            "service_other1": self.parse_value(row, "service_other1"),
+            "service_other2": self.parse_value(row, "service_other2"),
+            "service_separation": self.parse_value(row, "service_separation"),
+            "service_fee": self.parse_value(row, "service_fee"),
+            "service_value_money": self.parse_value(row, "service_value_money"),
+            "service_tax": self.parse_value(row, "service_tax"),
 
-            "co_executor_marine": parse_value(row, "co_executor_marine"),
-            "co_executor_port": parse_value(row, "co_executor_port"),
-            "co_executor_terminal1": parse_value(row, "co_executor_terminal1"),
-            "co_executor_terminal2": parse_value(row, "co_executor_terminal2"),
-            "co_executor_other_terminal": parse_value(row, "co_executor_other_terminal"),
-            "co_executor_avto1": parse_value(row, "co_executor_avto1"),
-            "co_executor_avto2": parse_value(row, "co_executor_avto2"),
-            "co_executor_avto3": parse_value(row, "co_executor_avto3"),
-            "co_executor_rzhd1": parse_value(row, "co_executor_rzhd1"),
-            "co_executor_rzhd2": parse_value(row, "co_executor_rzhd2"),
-            "co_executor_custom": parse_value(row, "co_executor_custom"),
-            "co_executor_demurrage": parse_value(row, "co_executor_demurrage"),
-            "co_executor_storage": parse_value(row, "co_executor_storage"),
-            "co_executor_other1": parse_value(row, "co_executor_other1"),
-            "co_executor_other2": parse_value(row, "co_executor_other2"),
-            "co_executor_separation": parse_value(row, "co_executor_separation"),
-            "co_executor_fee": parse_value(row, "co_executor_fee"),
-            "co_executor_value_money": parse_value(row, "co_executor_value_money"),
-            "co_executor_tax": parse_value(row, "co_executor_tax"),
+            "co_executor_marine": self.parse_value(row, "co_executor_marine"),
+            "co_executor_port": self.parse_value(row, "co_executor_port"),
+            "co_executor_terminal1": self.parse_value(row, "co_executor_terminal1"),
+            "co_executor_terminal2": self.parse_value(row, "co_executor_terminal2"),
+            "co_executor_other_terminal": self.parse_value(row, "co_executor_other_terminal"),
+            "co_executor_avto1": self.parse_value(row, "co_executor_avto1"),
+            "co_executor_avto2": self.parse_value(row, "co_executor_avto2"),
+            "co_executor_avto3": self.parse_value(row, "co_executor_avto3"),
+            "co_executor_rzhd1": self.parse_value(row, "co_executor_rzhd1"),
+            "co_executor_rzhd2": self.parse_value(row, "co_executor_rzhd2"),
+            "co_executor_custom": self.parse_value(row, "co_executor_custom"),
+            "co_executor_demurrage": self.parse_value(row, "co_executor_demurrage"),
+            "co_executor_storage": self.parse_value(row, "co_executor_storage"),
+            "co_executor_other1": self.parse_value(row, "co_executor_other1"),
+            "co_executor_other2": self.parse_value(row, "co_executor_other2"),
+            "co_executor_separation": self.parse_value(row, "co_executor_separation"),
+            "co_executor_fee": self.parse_value(row, "co_executor_fee"),
+            "co_executor_value_money": self.parse_value(row, "co_executor_value_money"),
+            "co_executor_tax": self.parse_value(row, "co_executor_tax"),
 
-            "reimbursable_sign_76_marine": parse_value(row, "reimbursable_sign_76_marine"),
-            "reimbursable_sign_76_port": parse_value(row, "reimbursable_sign_76_port"),
-            "reimbursable_sign_76_terminal1": parse_value(row, "reimbursable_sign_76_terminal1"),
-            "reimbursable_sign_76_terminal2": parse_value(row, "reimbursable_sign_76_terminal2"),
-            "reimbursable_sign_76_other_terminal": parse_value(row, "reimbursable_sign_76_other_terminal"),
-            "reimbursable_sign_76_avto1": parse_value(row, "reimbursable_sign_76_avto1"),
-            "reimbursable_sign_76_avto2": parse_value(row, "reimbursable_sign_76_avto2"),
-            "reimbursable_sign_76_avto3": parse_value(row, "reimbursable_sign_76_avto3"),
-            "reimbursable_sign_76_rzhd1": parse_value(row, "reimbursable_sign_76_rzhd1"),
-            "reimbursable_sign_76_rzhd2": parse_value(row, "reimbursable_sign_76_rzhd2"),
-            "reimbursable_sign_76_custom": parse_value(row, "reimbursable_sign_76_custom"),
-            "reimbursable_sign_76_demurrage": parse_value(row, "reimbursable_sign_76_demurrage"),
-            "reimbursable_sign_76_storage": parse_value(row, "reimbursable_sign_76_storage"),
-            "reimbursable_sign_76_other1": parse_value(row, "reimbursable_sign_76_other1"),
-            "reimbursable_sign_76_other2": parse_value(row, "reimbursable_sign_76_other2"),
-            "reimbursable_sign_76_separation": parse_value(row, "reimbursable_sign_76_separation"),
-            "reimbursable_sign_76_fee": parse_value(row, "reimbursable_sign_76_fee"),
-            "reimbursable_sign_76_value_money": parse_value(row, "reimbursable_sign_76_value_money"),
-            "reimbursable_sign_76_tax": parse_value(row, "reimbursable_sign_76_tax"),
+            "reimbursable_sign_76_marine": self.parse_value(row, "reimbursable_sign_76_marine"),
+            "reimbursable_sign_76_port": self.parse_value(row, "reimbursable_sign_76_port"),
+            "reimbursable_sign_76_terminal1": self.parse_value(row, "reimbursable_sign_76_terminal1"),
+            "reimbursable_sign_76_terminal2": self.parse_value(row, "reimbursable_sign_76_terminal2"),
+            "reimbursable_sign_76_other_terminal": self.parse_value(row, "reimbursable_sign_76_other_terminal"),
+            "reimbursable_sign_76_avto1": self.parse_value(row, "reimbursable_sign_76_avto1"),
+            "reimbursable_sign_76_avto2": self.parse_value(row, "reimbursable_sign_76_avto2"),
+            "reimbursable_sign_76_avto3": self.parse_value(row, "reimbursable_sign_76_avto3"),
+            "reimbursable_sign_76_rzhd1": self.parse_value(row, "reimbursable_sign_76_rzhd1"),
+            "reimbursable_sign_76_rzhd2": self.parse_value(row, "reimbursable_sign_76_rzhd2"),
+            "reimbursable_sign_76_custom": self.parse_value(row, "reimbursable_sign_76_custom"),
+            "reimbursable_sign_76_demurrage": self.parse_value(row, "reimbursable_sign_76_demurrage"),
+            "reimbursable_sign_76_storage": self.parse_value(row, "reimbursable_sign_76_storage"),
+            "reimbursable_sign_76_other1": self.parse_value(row, "reimbursable_sign_76_other1"),
+            "reimbursable_sign_76_other2": self.parse_value(row, "reimbursable_sign_76_other2"),
+            "reimbursable_sign_76_separation": self.parse_value(row, "reimbursable_sign_76_separation"),
+            "reimbursable_sign_76_fee": self.parse_value(row, "reimbursable_sign_76_fee"),
+            "reimbursable_sign_76_value_money": self.parse_value(row, "reimbursable_sign_76_value_money"),
+            "reimbursable_sign_76_tax": self.parse_value(row, "reimbursable_sign_76_tax"),
 
             "original_file_name": self.basename_filename,
             "original_file_parsed_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -608,7 +655,7 @@ class DKP(object):
         telegram(error_message)
         sys.exit(error_code)
 
-    def parse_sheet(self, df: pd.DataFrame, coefficient_of_header: int = 3) -> None:
+    def parse_sheet(self, df: pd.DataFrame, count_match_header: int = 7) -> None:
         """
         Parse a sheet of Excel file.
 
@@ -622,7 +669,7 @@ class DKP(object):
         and then exits with the error code 5.
 
         :param df: The pandas DataFrame representing the sheet of the Excel file.
-        :param coefficient_of_header: The coefficient to determine if a row is a header or not.
+        :param count_match_header: The coefficient to determine if a row is a header or not.
         :return: None
         """
         list_data: list = []
@@ -631,7 +678,7 @@ class DKP(object):
         index: Union[int, Hashable]
         for index, row in df.iterrows():
             row = list(row.to_dict().values())
-            if self._get_probability_of_header(row, list_columns) > coefficient_of_header:
+            if self._get_count_match_of_header(row, list_columns) >= count_match_header:
                 self.check_errors_in_header(row)
             elif not self.dict_columns_position["client"]:
                 self.get_columns_position(row, [0, len(row)], BLOCK_NAMES, self.dict_block_position)

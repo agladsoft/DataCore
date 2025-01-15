@@ -61,7 +61,8 @@ def group_nested_columns(
     group_index: int,
     column_index: int,
     filter_key: int,
-    filter_value: str
+    filter_value: str,
+    sort_index = 4
 ):
     """
     Groups nested columns of a given `reference` by specified indices.
@@ -135,6 +136,8 @@ BLOCK_TABLE_COLUMNS: dict = group_nested_columns(
     filter_value="Столбцы таблиц в блоках",
 )
 
+NOT_COUNT_BLOCK: list = ["natural_indicators_ktk", "natural_indicators_teus"]
+
 DATE_FORMATS: list = [
     "%m/%d/%y",
     "%d.%m.%Y",
@@ -145,6 +148,7 @@ DATE_FORMATS: list = [
 ]
 
 MONTH_NAMES: list = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
+NUMBER_CLEANING_PATTERN: str = r'\s|,'
 
 
 def telegram(message) -> int:

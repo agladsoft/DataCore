@@ -24,7 +24,29 @@ class DKP(object):
         self.filename: str = filename
         self.basename_filename: str = os.path.basename(filename)
         self.folder: str = folder
-        self.floating_columns: list = ["description"]
+        self.floating_columns: list = [
+            "description",
+            "co_executor_rate_per_unite_separation",
+            "co_executor_rate_per_unite_fee",
+            "co_executor_rate_per_unite_value_money",
+            "co_executor_rate_per_unite_tax",
+            "unit_margin_income_separation",
+            "unit_margin_income_fee",
+            "unit_margin_income_value_money",
+            "unit_margin_income_tax",
+            "service_separation",
+            "service_fee",
+            "service_value_money",
+            "service_tax",
+            "co_executor_separation",
+            "co_executor_fee",
+            "co_executor_value_money",
+            "co_executor_tax",
+            "reimbursable_sign_76_separation",
+            "reimbursable_sign_76_fee",
+            "reimbursable_sign_76_value_money",
+            "reimbursable_sign_76_tax"
+        ]
         self.dict_columns_position: Dict[str, Optional[int]] = {
             "client": None,
             "description": None,
@@ -34,6 +56,27 @@ class DKP(object):
             "bay": None,
             "owner": None,
             "container_size": None,
+
+            "co_executor_rate_per_unite_marine": None,
+            "co_executor_rate_per_unite_port": None,
+            "co_executor_rate_per_unite_terminal1": None,
+            "co_executor_rate_per_unite_terminal2": None,
+            "co_executor_rate_per_unite_other_terminal": None,
+            "co_executor_rate_per_unite_avto1": None,
+            "co_executor_rate_per_unite_avto2": None,
+            "co_executor_rate_per_unite_avto3": None,
+            "co_executor_rate_per_unite_rzhd1": None,
+            "co_executor_rate_per_unite_rzhd2": None,
+            "co_executor_rate_per_unite_custom": None,
+            "co_executor_rate_per_unite_demurrage": None,
+            "co_executor_rate_per_unite_storage": None,
+            "co_executor_rate_per_unite_other1": None,
+            "co_executor_rate_per_unite_other2": None,
+            "co_executor_rate_per_unite_separation": None,
+            "co_executor_rate_per_unite_fee": None,
+            "co_executor_rate_per_unite_value_money": None,
+            "co_executor_rate_per_unite_tax": None,
+
             "unit_margin_income_marine": None,
             "unit_margin_income_port": None,
             "unit_margin_income_terminal1": None,
@@ -49,6 +92,11 @@ class DKP(object):
             "unit_margin_income_storage": None,
             "unit_margin_income_other1": None,
             "unit_margin_income_other2": None,
+            "unit_margin_income_separation": None,
+            "unit_margin_income_fee": None,
+            "unit_margin_income_value_money": None,
+            "unit_margin_income_tax": None,
+
             "service_marine": None,
             "service_port": None,
             "service_terminal1": None,
@@ -64,6 +112,11 @@ class DKP(object):
             "service_storage": None,
             "service_other1": None,
             "service_other2": None,
+            "service_separation": None,
+            "service_fee": None,
+            "service_value_money": None,
+            "service_tax": None,
+
             "co_executor_marine": None,
             "co_executor_port": None,
             "co_executor_terminal1": None,
@@ -78,15 +131,39 @@ class DKP(object):
             "co_executor_demurrage": None,
             "co_executor_storage": None,
             "co_executor_other1": None,
-            "co_executor_other2": None
+            "co_executor_other2": None,
+            "co_executor_separation": None,
+            "co_executor_fee": None,
+            "co_executor_value_money": None,
+            "co_executor_tax": None,
+
+            "reimbursable_sign_76_marine": None,
+            "reimbursable_sign_76_port": None,
+            "reimbursable_sign_76_terminal1": None,
+            "reimbursable_sign_76_terminal2": None,
+            "reimbursable_sign_76_other_terminal": None,
+            "reimbursable_sign_76_avto1": None,
+            "reimbursable_sign_76_avto2": None,
+            "reimbursable_sign_76_avto3": None,
+            "reimbursable_sign_76_rzhd1": None,
+            "reimbursable_sign_76_rzhd2": None,
+            "reimbursable_sign_76_custom": None,
+            "reimbursable_sign_76_demurrage": None,
+            "reimbursable_sign_76_storage": None,
+            "reimbursable_sign_76_other1": None,
+            "reimbursable_sign_76_other2": None,
+            "reimbursable_sign_76_separation": None,
+            "reimbursable_sign_76_fee": None,
+            "reimbursable_sign_76_value_money": None,
+            "reimbursable_sign_76_tax": None
         }
         self.dict_block_position: Dict[str, Optional[int]] = {
             "natural_indicators_ktk": None,
-            "unit_rates_co_executors": None,
-            "specific_marginal_income": None,
-            "comment_service": None,
+            "co_executor_rate_per_unite": None,
+            "unit_margin_income": None,
+            "service": None,
             "co_executor": None,
-            "sign_compensatory": None,
+            "reimbursable_sign_76": None,
             "natural_indicators_teus": None
         }
 
@@ -311,7 +388,7 @@ class DKP(object):
         Extracts and processes data from a row in a table, returning a dictionary of parsed values.
 
         This function takes a row from a table and extracts various data points such as client details,
-        project information, and financial metrics. It uses a helper function `safe_strip` to clean and
+        project information, and financial metrics. It uses a helper function `parse_value` to clean and
         convert the data appropriately. The parsed data is returned as a dictionary along with additional
         metadata.
 
@@ -323,7 +400,7 @@ class DKP(object):
         :return: A dictionary containing parsed and processed data from the row.
         """
 
-        def safe_strip(rows: list, column: str) -> Union[str, float, int, None]:
+        def parse_value(rows: list, column: str) -> Union[str, float, int, bool, None]:
             if self.dict_columns_position[column] is None:
                 return None
 
@@ -331,7 +408,16 @@ class DKP(object):
             if not value:
                 return None
 
-            stripped_value = value.strip()  # Сначала убираем лишние пробелы
+            stripped_value: str = value.strip()
+
+            # Приведение к булевому значению
+            lower_value: str = stripped_value.lower()
+            if lower_value in {"да", "yes"}:
+                return True
+            elif lower_value in {"нет", "no"}:
+                return False
+
+            # Проверка, является ли значение числом
             if not self._is_digit(stripped_value):
                 return stripped_value
 
@@ -346,76 +432,128 @@ class DKP(object):
 
         logger.info(f'row {index} is {row}')
         parsed_record: dict = {
-            "client": safe_strip(row, "client"),
-            "description": safe_strip(row, "description"),
-            "project": safe_strip(row, "project"),
-            "cargo": safe_strip(row, "cargo"),
-            "direction": safe_strip(row, "direction"),
-            "bay": safe_strip(row, "bay"),
-            "owner": safe_strip(row, "owner"),
-            "container_size": safe_strip(row, "container_size"),
+            "client": parse_value(row, "client"),
+            "description": parse_value(row, "description"),
+            "project": parse_value(row, "project"),
+            "cargo": parse_value(row, "cargo"),
+            "direction": parse_value(row, "direction"),
+            "bay": parse_value(row, "bay"),
+            "owner": parse_value(row, "owner"),
+            "container_size": parse_value(row, "container_size"),
             "month": index_month,
             "month_string": month_string,
             "date": f"{metadata['year']}-{index_month:02d}-01",
 
             "container_count": next((
-                safe_strip(row, key)
+                parse_value(row, key)
                 for key, val in BLOCK_TABLE_COLUMNS["natural_indicators_ktk"].items()
                 if month_string in val
             ), None),
             "teu": next((
-                safe_strip(row, key)
+                parse_value(row, key)
                 for key, val in BLOCK_TABLE_COLUMNS["natural_indicators_teus"].items()
                 if month_string in val
             ), None),
 
-            "unit_margin_income_marine": safe_strip(row, "unit_margin_income_marine"),
-            "unit_margin_income_port": safe_strip(row, "unit_margin_income_port"),
-            "unit_margin_income_terminal1": safe_strip(row, "unit_margin_income_terminal1"),
-            "unit_margin_income_terminal2": safe_strip(row, "unit_margin_income_terminal2"),
-            "unit_margin_income_other_terminal": safe_strip(row, "unit_margin_income_other_terminal"),
-            "unit_margin_income_avto1": safe_strip(row, "unit_margin_income_avto1"),
-            "unit_margin_income_avto2": safe_strip(row, "unit_margin_income_avto2"),
-            "unit_margin_income_avto3": safe_strip(row, "unit_margin_income_avto3"),
-            "unit_margin_income_rzhd1": safe_strip(row, "unit_margin_income_rzhd1"),
-            "unit_margin_income_rzhd2": safe_strip(row, "unit_margin_income_rzhd2"),
-            "unit_margin_income_custom": safe_strip(row, "unit_margin_income_custom"),
-            "unit_margin_income_demurrage": safe_strip(row, "unit_margin_income_demurrage"),
-            "unit_margin_income_storage": safe_strip(row, "unit_margin_income_storage"),
-            "unit_margin_income_other1": safe_strip(row, "unit_margin_income_other1"),
-            "unit_margin_income_other2": safe_strip(row, "unit_margin_income_other2"),
+            "co_executor_rate_per_unite_marine": parse_value(row, "co_executor_rate_per_unite_marine"),
+            "co_executor_rate_per_unite_port": parse_value(row, "co_executor_rate_per_unite_port"),
+            "co_executor_rate_per_unite_terminal1": parse_value(row, "co_executor_rate_per_unite_terminal1"),
+            "co_executor_rate_per_unite_terminal2": parse_value(row, "co_executor_rate_per_unite_terminal2"),
+            "co_executor_rate_per_unite_other_terminal": parse_value(row, "co_executor_rate_per_unite_other_terminal"),
+            "co_executor_rate_per_unite_avto1": parse_value(row, "co_executor_rate_per_unite_avto1"),
+            "co_executor_rate_per_unite_avto2": parse_value(row, "co_executor_rate_per_unite_avto2"),
+            "co_executor_rate_per_unite_avto3": parse_value(row, "co_executor_rate_per_unite_avto3"),
+            "co_executor_rate_per_unite_rzhd1": parse_value(row, "co_executor_rate_per_unite_rzhd1"),
+            "co_executor_rate_per_unite_rzhd2": parse_value(row, "co_executor_rate_per_unite_rzhd2"),
+            "co_executor_rate_per_unite_custom": parse_value(row, "co_executor_rate_per_unite_custom"),
+            "co_executor_rate_per_unite_demurrage": parse_value(row, "co_executor_rate_per_unite_demurrage"),
+            "co_executor_rate_per_unite_storage": parse_value(row, "co_executor_rate_per_unite_storage"),
+            "co_executor_rate_per_unite_other1": parse_value(row, "co_executor_rate_per_unite_other1"),
+            "co_executor_rate_per_unite_other2": parse_value(row, "co_executor_rate_per_unite_other2"),
+            "co_executor_rate_per_unite_separation": parse_value(row, "co_executor_rate_per_unite_separation"),
+            "co_executor_rate_per_unite_fee": parse_value(row, "co_executor_rate_per_unite_fee"),
+            "co_executor_rate_per_unite_value_money": parse_value(row, "co_executor_rate_per_unite_value_money"),
+            "co_executor_rate_per_unite_tax": parse_value(row, "co_executor_rate_per_unite_tax"),
 
-            "service_marine": safe_strip(row, "service_marine"),
-            "service_port": safe_strip(row, "service_port"),
-            "service_terminal1": safe_strip(row, "service_terminal1"),
-            "service_terminal2": safe_strip(row, "service_terminal2"),
-            "service_other_terminal": safe_strip(row, "service_other_terminal"),
-            "service_avto1": safe_strip(row, "service_avto1"),
-            "service_avto2": safe_strip(row, "service_avto2"),
-            "service_avto3": safe_strip(row, "service_avto3"),
-            "service_rzhd1": safe_strip(row, "service_rzhd1"),
-            "service_rzhd2": safe_strip(row, "service_rzhd2"),
-            "service_custom": safe_strip(row, "service_custom"),
-            "service_demurrage": safe_strip(row, "service_demurrage"),
-            "service_storage": safe_strip(row, "service_storage"),
-            "service_other1": safe_strip(row, "service_other1"),
-            "service_other2": safe_strip(row, "service_other2"),
+            "unit_margin_income_marine": parse_value(row, "unit_margin_income_marine"),
+            "unit_margin_income_port": parse_value(row, "unit_margin_income_port"),
+            "unit_margin_income_terminal1": parse_value(row, "unit_margin_income_terminal1"),
+            "unit_margin_income_terminal2": parse_value(row, "unit_margin_income_terminal2"),
+            "unit_margin_income_other_terminal": parse_value(row, "unit_margin_income_other_terminal"),
+            "unit_margin_income_avto1": parse_value(row, "unit_margin_income_avto1"),
+            "unit_margin_income_avto2": parse_value(row, "unit_margin_income_avto2"),
+            "unit_margin_income_avto3": parse_value(row, "unit_margin_income_avto3"),
+            "unit_margin_income_rzhd1": parse_value(row, "unit_margin_income_rzhd1"),
+            "unit_margin_income_rzhd2": parse_value(row, "unit_margin_income_rzhd2"),
+            "unit_margin_income_custom": parse_value(row, "unit_margin_income_custom"),
+            "unit_margin_income_demurrage": parse_value(row, "unit_margin_income_demurrage"),
+            "unit_margin_income_storage": parse_value(row, "unit_margin_income_storage"),
+            "unit_margin_income_other1": parse_value(row, "unit_margin_income_other1"),
+            "unit_margin_income_other2": parse_value(row, "unit_margin_income_other2"),
+            "unit_margin_income_separation": parse_value(row, "unit_margin_income_separation"),
+            "unit_margin_income_fee": parse_value(row, "unit_margin_income_fee"),
+            "unit_margin_income_value_money": parse_value(row, "unit_margin_income_value_money"),
+            "unit_margin_income_tax": parse_value(row, "unit_margin_income_tax"),
 
-            "co_executor_marine": safe_strip(row, "co_executor_marine"),
-            "co_executor_port": safe_strip(row, "co_executor_port"),
-            "co_executor_terminal1": safe_strip(row, "co_executor_terminal1"),
-            "co_executor_terminal2": safe_strip(row, "co_executor_terminal2"),
-            "co_executor_other_terminal": safe_strip(row, "co_executor_other_terminal"),
-            "co_executor_avto1": safe_strip(row, "co_executor_avto1"),
-            "co_executor_avto2": safe_strip(row, "co_executor_avto2"),
-            "co_executor_avto3": safe_strip(row, "co_executor_avto3"),
-            "co_executor_rzhd1": safe_strip(row, "co_executor_rzhd1"),
-            "co_executor_rzhd2": safe_strip(row, "co_executor_rzhd2"),
-            "co_executor_custom": safe_strip(row, "co_executor_custom"),
-            "co_executor_demurrage": safe_strip(row, "co_executor_demurrage"),
-            "co_executor_storage": safe_strip(row, "co_executor_storage"),
-            "co_executor_other1": safe_strip(row, "co_executor_other1"),
-            "co_executor_other2": safe_strip(row, "co_executor_other2"),
+            "service_marine": parse_value(row, "service_marine"),
+            "service_port": parse_value(row, "service_port"),
+            "service_terminal1": parse_value(row, "service_terminal1"),
+            "service_terminal2": parse_value(row, "service_terminal2"),
+            "service_other_terminal": parse_value(row, "service_other_terminal"),
+            "service_avto1": parse_value(row, "service_avto1"),
+            "service_avto2": parse_value(row, "service_avto2"),
+            "service_avto3": parse_value(row, "service_avto3"),
+            "service_rzhd1": parse_value(row, "service_rzhd1"),
+            "service_rzhd2": parse_value(row, "service_rzhd2"),
+            "service_custom": parse_value(row, "service_custom"),
+            "service_demurrage": parse_value(row, "service_demurrage"),
+            "service_storage": parse_value(row, "service_storage"),
+            "service_other1": parse_value(row, "service_other1"),
+            "service_other2": parse_value(row, "service_other2"),
+            "service_separation": parse_value(row, "service_separation"),
+            "service_fee": parse_value(row, "service_fee"),
+            "service_value_money": parse_value(row, "service_value_money"),
+            "service_tax": parse_value(row, "service_tax"),
+
+            "co_executor_marine": parse_value(row, "co_executor_marine"),
+            "co_executor_port": parse_value(row, "co_executor_port"),
+            "co_executor_terminal1": parse_value(row, "co_executor_terminal1"),
+            "co_executor_terminal2": parse_value(row, "co_executor_terminal2"),
+            "co_executor_other_terminal": parse_value(row, "co_executor_other_terminal"),
+            "co_executor_avto1": parse_value(row, "co_executor_avto1"),
+            "co_executor_avto2": parse_value(row, "co_executor_avto2"),
+            "co_executor_avto3": parse_value(row, "co_executor_avto3"),
+            "co_executor_rzhd1": parse_value(row, "co_executor_rzhd1"),
+            "co_executor_rzhd2": parse_value(row, "co_executor_rzhd2"),
+            "co_executor_custom": parse_value(row, "co_executor_custom"),
+            "co_executor_demurrage": parse_value(row, "co_executor_demurrage"),
+            "co_executor_storage": parse_value(row, "co_executor_storage"),
+            "co_executor_other1": parse_value(row, "co_executor_other1"),
+            "co_executor_other2": parse_value(row, "co_executor_other2"),
+            "co_executor_separation": parse_value(row, "co_executor_separation"),
+            "co_executor_fee": parse_value(row, "co_executor_fee"),
+            "co_executor_value_money": parse_value(row, "co_executor_value_money"),
+            "co_executor_tax": parse_value(row, "co_executor_tax"),
+
+            "reimbursable_sign_76_marine": parse_value(row, "reimbursable_sign_76_marine"),
+            "reimbursable_sign_76_port": parse_value(row, "reimbursable_sign_76_port"),
+            "reimbursable_sign_76_terminal1": parse_value(row, "reimbursable_sign_76_terminal1"),
+            "reimbursable_sign_76_terminal2": parse_value(row, "reimbursable_sign_76_terminal2"),
+            "reimbursable_sign_76_other_terminal": parse_value(row, "reimbursable_sign_76_other_terminal"),
+            "reimbursable_sign_76_avto1": parse_value(row, "reimbursable_sign_76_avto1"),
+            "reimbursable_sign_76_avto2": parse_value(row, "reimbursable_sign_76_avto2"),
+            "reimbursable_sign_76_avto3": parse_value(row, "reimbursable_sign_76_avto3"),
+            "reimbursable_sign_76_rzhd1": parse_value(row, "reimbursable_sign_76_rzhd1"),
+            "reimbursable_sign_76_rzhd2": parse_value(row, "reimbursable_sign_76_rzhd2"),
+            "reimbursable_sign_76_custom": parse_value(row, "reimbursable_sign_76_custom"),
+            "reimbursable_sign_76_demurrage": parse_value(row, "reimbursable_sign_76_demurrage"),
+            "reimbursable_sign_76_storage": parse_value(row, "reimbursable_sign_76_storage"),
+            "reimbursable_sign_76_other1": parse_value(row, "reimbursable_sign_76_other1"),
+            "reimbursable_sign_76_other2": parse_value(row, "reimbursable_sign_76_other2"),
+            "reimbursable_sign_76_separation": parse_value(row, "reimbursable_sign_76_separation"),
+            "reimbursable_sign_76_fee": parse_value(row, "reimbursable_sign_76_fee"),
+            "reimbursable_sign_76_value_money": parse_value(row, "reimbursable_sign_76_value_money"),
+            "reimbursable_sign_76_tax": parse_value(row, "reimbursable_sign_76_tax"),
 
             "original_file_name": self.basename_filename,
             "original_file_parsed_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -437,13 +575,13 @@ class DKP(object):
         """
         logger.info(f'File - {self.basename_filename}. Datetime - {datetime.now()}')
         # Match department
-        dkp_pattern: str = '|'.join(map(re.escape, DKP_NAMES))
+        dkp_pattern: str = '|'.join(map(re.escape, DKP_NAMES.keys()))
         department_match: Match = re.search(rf'{dkp_pattern}', self.basename_filename)
         if not department_match:
             self.send_error(
                 message='Error code 10: Department не указан в файле! Файл:', error_code=10
             )
-        metadata: dict = {'department': department_match.group(0)}
+        metadata: dict = {'department': DKP_NAMES[f"{department_match.group(0)}"]}
         # Match year
         year_match: Match = re.search(r'\d{4}', self.basename_filename)
         if not year_match:
@@ -547,4 +685,3 @@ if __name__ == "__main__":
     dkp: DKP = DKP(os.path.abspath(sys.argv[1]), sys.argv[2])
     dkp.main()
     logger.info(f"{os.path.basename(sys.argv[1])} has finished processing")
-

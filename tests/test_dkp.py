@@ -237,7 +237,11 @@ def test_write_to_json(dkp_instance: DKP, tmp_path: PosixPath) -> None:
     :param tmp_path: A temporary path to write the JSON file.
     :return: None
     """
-    data: list = [{"client": "Test Client", "description": "Test Description"}]
+    data: list = [{
+        "client": "Test Client",
+        "description": "Test Description",
+        "project": "Test Project"
+    }]
     dkp_instance.folder = tmp_path
     dkp_instance.write_to_json(data)
     output_file: PosixPath = tmp_path / os.path.basename(f"{dkp_instance.filename}.json")
@@ -256,6 +260,7 @@ def test_write_to_json(dkp_instance: DKP, tmp_path: PosixPath) -> None:
     first_entry = parsed_content[0]
     assert first_entry["client"] == "Test Client"
     assert first_entry["description"] == "Test Description"
+    assert first_entry["project"] == "Test Project"
 
 
 def setup_column_positions(dkp_instance: DKP, columns_positions: dict) -> None:

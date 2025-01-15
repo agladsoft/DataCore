@@ -4,7 +4,6 @@ from scripts.dkp import DKP
 from pathlib import PosixPath
 from _pytest.logging import LogCaptureFixture
 
-os.environ['XL_IDP_PATH_DATACORE'] = "/home/timur/sambashare/DataCore"
 dir_path: str = f"{os.environ['XL_IDP_PATH_DATACORE']}/dkp"
 
 

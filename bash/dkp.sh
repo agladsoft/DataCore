@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PYTHONPATH="${XL_IDP_ROOT_DATACORE}:${PYTHONPATH}"
+
 xls_path="${XL_IDP_PATH_DATACORE}/dkp"
 
 done_path="${xls_path}"/done

@@ -54,7 +54,7 @@ jobs:
         
     - name: Debug environment variables
       run: |
-        echo "HOST=${{ secrets.HOST }}"
+        echo "HOST=${HOST}"
         echo "DATABASE=${{ secrets.DATABASE }}"
         echo "USERNAME_DB=${{ secrets.USERNAME_DB }}"
         echo "PASSWORD=<masked>"

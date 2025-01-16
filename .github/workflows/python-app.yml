@@ -39,6 +39,7 @@ jobs:
     - name: Install dependencies
       env:
         PYTHONPATH: ${{ env.PYTHONPATH }}
+        HOST: ${{ env.HOST }}
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
@@ -46,6 +47,7 @@ jobs:
     - name: Lint with flake8
       env:
         PYTHONPATH: ${{ env.PYTHONPATH }}
+        HOST: ${{ env.HOST }}
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -54,5 +56,6 @@ jobs:
     - name: Test with pytest
       env:
         PYTHONPATH: ${{ env.PYTHONPATH }}
+        HOST: ${{ env.HOST }}
       run: |
         pytest

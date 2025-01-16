@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:  # Установка переменных окружения для всей задачи
       PYTHONPATH: ${{ github.workspace }}
-      HOST: ${{ vars.DATABASE }}
+      HOST: ${{ env.DATABASE }}
       DATABASE: ${{ secrets.DATABASE }}
       USERNAME_DB: ${{ secrets.USERNAME_DB }}
       PASSWORD: ${{ secrets.PASSWORD }}
@@ -54,7 +54,8 @@ jobs:
         
     - name: Debug environment variables
       run: |
-        echo "HOST=${{ vars.DATABASE }}"
+        echo "HOST=${{ env.HOST }}"
+        echo "HOST=$HOST"
         echo "DATABASE=${{ secrets.DATABASE }}"
         echo "USERNAME_DB=${{ secrets.USERNAME_DB }}"
         echo "PASSWORD=<masked>"
@@ -65,7 +66,7 @@ jobs:
 
     - name: Check required environment variables
       run: |
-        if [ -z "${{ vars.HOST }}" ]; then echo "HOST is not set"; exit 1; fi
+        if [ -z "${{ env.HOST }}" ]; then echo "HOST is not set"; exit 1; fi
         if [ -z "${{ secrets.DATABASE }}" ]; then echo "DATABASE is not set"; exit 1; fi
         if [ -z "${{ secrets.USERNAME_DB }}" ]; then echo "USERNAME_DB is not set"; exit 1; fi
         if [ -z "${{ secrets.PASSWORD }}" ]; then echo "PASSWORD is not set"; exit 1; fi

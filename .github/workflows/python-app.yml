@@ -65,7 +65,7 @@ jobs:
 
     - name: Check required environment variables
       run: |
-        if [ -z "${{ secrets.HOST }}" ]; then echo "HOST is not set"; exit 1; fi
+        if [ -z "${{ vars.HOST }}" ]; then echo "HOST is not set"; exit 1; fi
         if [ -z "${{ secrets.DATABASE }}" ]; then echo "DATABASE is not set"; exit 1; fi
         if [ -z "${{ secrets.USERNAME_DB }}" ]; then echo "USERNAME_DB is not set"; exit 1; fi
         if [ -z "${{ secrets.PASSWORD }}" ]; then echo "PASSWORD is not set"; exit 1; fi

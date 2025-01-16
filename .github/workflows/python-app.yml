@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:  # Установка переменных окружения для всей задачи
       PYTHONPATH: ${{ github.workspace }}
-      HOST: ${{ secrets.HOST }}
+      HOST: 10.23.4.203
       DATABASE: ${{ secrets.DATABASE }}
       USERNAME_DB: ${{ secrets.USERNAME_DB }}
       PASSWORD: ${{ secrets.PASSWORD }}
@@ -54,7 +54,7 @@ jobs:
         
     - name: Debug environment variables
       run: |
-        echo "HOST=${HOST}"
+        echo "HOST=$HOST"
         echo "DATABASE=${{ secrets.DATABASE }}"
         echo "USERNAME_DB=${{ secrets.USERNAME_DB }}"
         echo "PASSWORD=<masked>"

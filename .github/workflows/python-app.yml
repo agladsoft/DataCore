@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:  # Установка переменных окружения для всей задачи
       PYTHONPATH: ${{ github.workspace }}
-      HOST: ${{ env.DATABASE }}
+      HOST: ${{ env.HOST }}
       DATABASE: ${{ secrets.DATABASE }}
       USERNAME_DB: ${{ secrets.USERNAME_DB }}
       PASSWORD: ${{ secrets.PASSWORD }}

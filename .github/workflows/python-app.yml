@@ -28,6 +28,14 @@ jobs:
         export PROJECT_ROOT=$(pwd)
         export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
         echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
+        echo "HOST=${{ secrets.HOST }}" >> $GITHUB_ENV
+        echo "DATABASE=${{ secrets.DATABASE }}" >> $GITHUB_ENV
+        echo "USERNAME_DB=${{ secrets.USERNAME_DB }}" >> $GITHUB_ENV
+        echo "PASSWORD=${{ secrets.PASSWORD }}" >> $GITHUB_ENV
+        echo "TOKEN_TELEGRAM=${{ secrets.TOKEN_TELEGRAM }}" >> $GITHUB_ENV
+        echo "CHAT_ID=${{ secrets.CHAT_ID }}" >> $GITHUB_ENV
+        echo "TOPIC=${{ secrets.TOPIC }}" >> $GITHUB_ENV
+        echo "ID=${{ secrets.ID }}" >> $GITHUB_ENV
     - name: Install dependencies
       env:
         PYTHONPATH: ${{ env.PYTHONPATH }}

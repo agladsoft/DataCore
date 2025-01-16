@@ -1,3 +1,6 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
 name: Python application
 
 on:
@@ -11,27 +14,17 @@ permissions:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:  # Установка переменных окружения для всей задачи
-      PYTHONPATH: ${{ github.workspace }}
-      HOST: ${{ secrets.HOST }}
-      DATABASE: ${{ secrets.DATABASE }}
-      USERNAME_DB: ${{ secrets.USERNAME_DB }}
-      PASSWORD: ${{ secrets.PASSWORD }}
-      TOKEN_TELEGRAM: ${{ secrets.TOKEN_TELEGRAM }}
-      CHAT_ID: ${{ secrets.CHAT_ID }}
-      TOPIC: ${{ secrets.TOPIC }}
-      ID: ${{ secrets.ID }}
 
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python 3.8
       uses: actions/setup-python@v3
       with:
         python-version: "3.8"
-
+        
     - name: Cache pip packages
       uses: actions/cache@v3
       with:
@@ -39,20 +32,64 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-
+          
+    - name: Set environment variables
+      run: |
+        export PROJECT_ROOT=$(pwd)
+        export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
+        echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
+        echo "HOST=${{ secrets.HOST }}" >> $GITHUB_ENV
+        echo "DATABASE=${{ secrets.DATABASE }}" >> $GITHUB_ENV
+        echo "USERNAME_DB=${{ secrets.USERNAME_DB }}" >> $GITHUB_ENV
+        echo "PASSWORD=${{ secrets.PASSWORD }}" >> $GITHUB_ENV
+        echo "TOKEN_TELEGRAM=${{ secrets.TOKEN_TELEGRAM }}" >> $GITHUB_ENV
+        echo "CHAT_ID=${{ secrets.CHAT_ID }}" >> $GITHUB_ENV
+        echo "TOPIC=${{ secrets.TOPIC }}" >> $GITHUB_ENV
+        echo "ID=${{ secrets.ID }}" >> $GITHUB_ENV
+        
     - name: Install dependencies
+      env:
+        PYTHONPATH: ${{ env.PYTHONPATH }}
+        HOST: ${{ secrets.HOST }}
+        DATABASE: ${{ secrets.DATABASE }}
+        USERNAME_DB: ${{ secrets.USERNAME_DB }}
+        PASSWORD: ${{ secrets.PASSWORD }}
+        TOKEN_TELEGRAM: ${{ secrets.TOKEN_TELEGRAM }}
+        CHAT_ID: ${{ secrets.CHAT_ID }}
+        TOPIC: ${{ secrets.TOPIC }}
+        ID: ${{ secrets.ID }}
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
+        
     - name: Lint with flake8
+      env:
+        PYTHONPATH: ${{ env.PYTHONPATH }}
+        HOST: ${{ secrets.HOST }}
+        DATABASE: ${{ secrets.DATABASE }}
+        USERNAME_DB: ${{ secrets.USERNAME_DB }}
+        PASSWORD: ${{ secrets.PASSWORD }}
+        TOKEN_TELEGRAM: ${{ secrets.TOKEN_TELEGRAM }}
+        CHAT_ID: ${{ secrets.CHAT_ID }}
+        TOPIC: ${{ secrets.TOPIC }}
+        ID: ${{ secrets.ID }}
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
+        
     - name: Test with pytest
+      env:
+        PYTHONPATH: ${{ env.PYTHONPATH }}
+        HOST: ${{ secrets.HOST }}
+        DATABASE: ${{ secrets.DATABASE }}
+        USERNAME_DB: ${{ secrets.USERNAME_DB }}
+        PASSWORD: ${{ secrets.PASSWORD }}
+        TOKEN_TELEGRAM: ${{ secrets.TOKEN_TELEGRAM }}
+        CHAT_ID: ${{ secrets.CHAT_ID }}
+        TOPIC: ${{ secrets.TOPIC }}
+        ID: ${{ secrets.ID }}
       run: |
         pytest

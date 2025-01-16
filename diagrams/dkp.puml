@@ -23,6 +23,7 @@ package "dkp_py" {
         + get_content_in_table(index: Union[int, Hashable], index_month: int, month_string, row: list, metadata: dict)
         + parse_value(rows: list, column: str)
         + _extract_value(rows: list, column: str)
+        +_clean_number(value: str)
         + _convert_value(value: Optional[str])
         + _is_digit(x: str)
         + _merge_two_dicts(x: Dict, y: Dict)

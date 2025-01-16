@@ -1,4 +1,5 @@
 import os
+import json
 import pytest
 from scripts.dkp import DKP
 from pathlib import PosixPath
@@ -185,7 +186,21 @@ def test_get_probability_of_header(dkp_instance: DKP, row: list, expected_min_co
     assert count_match_header >= expected_min_count
 
 
-def test_check_errors_in_columns(dkp_instance: DKP, caplog: LogCaptureFixture) -> None:
+@pytest.mark.parametrize("columns, error_message, expected_log", [
+    ({"client": None, "description": 1}, "Test error", "Test error. Empty columns - ['client']"),
+    (
+        {"client": None, "description": None},
+        "Empty columns error",
+        "Empty columns error. Empty columns - ['client', 'description']"
+    )
+])
+def test_check_errors_in_columns(
+    dkp_instance: DKP,
+    caplog: LogCaptureFixture,
+    columns: dict,
+    error_message: str,
+    expected_log: str
+) -> None:
     """
     Tests the `check_errors_in_columns` method for handling empty columns.
 
@@ -196,12 +211,18 @@ def test_check_errors_in_columns(dkp_instance: DKP, caplog: LogCaptureFixture) -
 
     :param dkp_instance: An instance of the DKP class.
     :param caplog: A pytest fixture to capture log records.
+    :param columns: The dictionary of columns to test.
+    :param error_message: The error message to test.
+    :param expected_log: The expected log output.
     :return: None
     """
-    columns: dict = {"client": None, "description": 1}
     with pytest.raises(SystemExit) as excinfo:
-        dkp_instance.check_errors_in_columns(columns, "Test error")
-    assert "Test error. Empty columns - ['client']" in caplog.text
+        dkp_instance.check_errors_in_columns(columns, error_message)
+
+    # Проверка на то, что сообщение об ошибке содержится в логе
+    assert expected_log in caplog.text
+
+    # Проверка на то, что код выхода правильный
     assert excinfo.value.code == 2
 
 
@@ -216,14 +237,30 @@ def test_write_to_json(dkp_instance: DKP, tmp_path: PosixPath) -> None:
     :param tmp_path: A temporary path to write the JSON file.
     :return: None
     """
-    data: list = [{"client": "Test Client", "description": "Test Description"}]
+    data: list = [{
+        "client": "Test Client",
+        "description": "Test Description",
+        "project": "Test Project"
+    }]
     dkp_instance.folder = tmp_path
     dkp_instance.write_to_json(data)
     output_file: PosixPath = tmp_path / os.path.basename(f"{dkp_instance.filename}.json")
     assert output_file.exists()
     with open(output_file, "r", encoding="utf-8") as f:
-        content: str = f.read()
-    assert '"client": "Test Client"' in content
+        parsed_content = json.loads(f.read())
+
+    # Убедитесь, что это список с одним элементом
+    assert isinstance(parsed_content, list)
+    assert len(parsed_content) == 1
+
+    # Убедитесь, что структура и содержимое данных соответствуют входным данным
+    assert parsed_content == data
+
+    # При необходимости проверьте конкретные поля
+    first_entry = parsed_content[0]
+    assert first_entry["client"] == "Test Client"
+    assert first_entry["description"] == "Test Description"
+    assert first_entry["project"] == "Test Project"
 
 
 def setup_column_positions(dkp_instance: DKP, columns_positions: dict) -> None:
@@ -286,5 +323,5 @@ def test_get_content_in_table(dkp_instance: DKP) -> None:
         "date": "2024-01-01",
     }
     setup_column_positions(dkp_instance, columns_positions)
-    record: dict = dkp_instance.get_content_in_table(0, 1, "Январь", row, metadata)
+    record: dict = dkp_instance.get_content_in_table(1, "Январь", row, metadata)
     validate_record_fields(record, expected_values)

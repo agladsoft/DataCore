@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     env:  # Установка переменных окружения для всей задачи
       PYTHONPATH: ${{ github.workspace }}
-      HOST: ${{ vars.HOST }}
-      DATABASE: ${{ secrets.DATABASE }}
-      USERNAME_DB: ${{ secrets.USERNAME_DB }}
-      PASSWORD: ${{ secrets.PASSWORD }}
-      TOKEN_TELEGRAM: ${{ secrets.TOKEN_TELEGRAM }}
-      CHAT_ID: ${{ secrets.CHAT_ID }}
-      TOPIC: ${{ secrets.TOPIC }}
-      ID: ${{ secrets.ID }}
+      HOST: 10.23.4.203
+      DATABASE: DataCore
+      USERNAME_DB: default
+      PASSWORD: 6QVnYsC4iSzz
+      TOKEN_TELEGRAM: 6557326533:AAGcYU6q0DFLJfjZMHTaDjLnf-PzRMzA-6M
+      CHAT_ID: -1002064780308
+      TOPIC: 1069
+      ID: 1071
 
     steps:
     - uses: actions/checkout@v4
@@ -54,26 +54,25 @@ jobs:
         
     - name: Debug environment variables
       run: |
-        echo "HOST=${{ vars.HOST }}"
         echo "HOST=$HOST"
-        echo "DATABASE=${{ secrets.DATABASE }}"
-        echo "USERNAME_DB=${{ secrets.USERNAME_DB }}"
-        echo "PASSWORD=<masked>"
-        echo "TOKEN_TELEGRAM=<masked>"
-        echo "CHAT_ID=${{ secrets.CHAT_ID }}"
-        echo "TOPIC=${{ secrets.TOPIC }}"
-        echo "ID=${{ secrets.ID }}"
+        echo "DATABASE=$DATABASE"
+        echo "USERNAME_DB=$USERNAME_DB"
+        echo "PASSWORD=$PASSWORD"
+        echo "TOKEN_TELEGRAM=$TOKEN_TELEGRAM"
+        echo "CHAT_ID=$CHAT_ID"
+        echo "TOPIC=$TOPIC"
+        echo "ID=$ID"
 
     - name: Check required environment variables
       run: |
-        if [ -z "${{ vars.HOST }}" ]; then echo "HOST is not set"; exit 1; fi
-        if [ -z "${{ secrets.DATABASE }}" ]; then echo "DATABASE is not set"; exit 1; fi
-        if [ -z "${{ secrets.USERNAME_DB }}" ]; then echo "USERNAME_DB is not set"; exit 1; fi
-        if [ -z "${{ secrets.PASSWORD }}" ]; then echo "PASSWORD is not set"; exit 1; fi
-        if [ -z "${{ secrets.TOKEN_TELEGRAM }}" ]; then echo "TOKEN_TELEGRAM is not set"; exit 1; fi
-        if [ -z "${{ secrets.CHAT_ID }}" ]; then echo "CHAT_ID is not set"; exit 1; fi
-        if [ -z "${{ secrets.TOPIC }}" ]; then echo "TOPIC is not set"; exit 1; fi
-        if [ -z "${{ secrets.ID }}" ]; then echo "ID is not set"; exit 1; fi
+        if [ -z "$HOST" ]; then echo "HOST is not set"; exit 1; fi
+        if [ -z "$DATABASE" ]; then echo "DATABASE is not set"; exit 1; fi
+        if [ -z "$USERNAME_DB" ]; then echo "USERNAME_DB is not set"; exit 1; fi
+        if [ -z "$PASSWORD" ]; then echo "PASSWORD is not set"; exit 1; fi
+        if [ -z "$TOKEN_TELEGRAM" ]; then echo "TOKEN_TELEGRAM is not set"; exit 1; fi
+        if [ -z "$CHAT_ID" ]; then echo "CHAT_ID is not set"; exit 1; fi
+        if [ -z "$TOPIC" ]; then echo "TOPIC is not set"; exit 1; fi
+        if [ -z "$ID" ]; then echo "ID is not set"; exit 1; fi
 
     - name: Test with pytest
       run: |

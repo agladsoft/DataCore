@@ -1,3 +1,11 @@
 venv
 .idea
+.codegpt
+.pytest_cache
 .vscode
+.coverage
+htmlcov
+logging
+tests/.pytest_cache
+tests/logging
+scripts/logging

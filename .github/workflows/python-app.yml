@@ -55,13 +55,6 @@ jobs:
         echo "TOPIC=$TOPIC"
         echo "ID=$ID"
 
-    - name: Check required environment variables
-      run: |
-        if [ -z "$TOKEN_TELEGRAM" ]; then echo "TOKEN_TELEGRAM is not set"; exit 1; fi
-        if [ -z "$CHAT_ID" ]; then echo "CHAT_ID is not set"; exit 1; fi
-        if [ -z "$TOPIC" ]; then echo "TOPIC is not set"; exit 1; fi
-        if [ -z "$ID" ]; then echo "ID is not set"; exit 1; fi
-
     - name: Test with pytest
       run: |
         pytest

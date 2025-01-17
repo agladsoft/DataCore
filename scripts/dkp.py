@@ -7,6 +7,9 @@ from re import Match
 from datetime import datetime
 from scripts.settings_dkp import *
 from scripts.app_logger import get_logger
+from clickhouse_connect import get_client
+from clickhouse_connect.driver import Client
+from clickhouse_connect.driver.query import Sequence
 from typing import List, Dict, Optional, Union, Hashable
 
 logger: get_logger = get_logger(os.path.basename(__file__).replace(".py", ""))
@@ -24,21 +27,48 @@ class DKP(object):
         self.filename: str = filename
         self.basename_filename: str = os.path.basename(filename)
         self.folder: str = folder
+        reference_dkp: Sequence = self.get_reference()
+        self.columns_names: dict = self._group_columns(
+            reference=reference_dkp,
+            group_index=3,
+            column_index=2,
+            filter_key=0,
+            filter_value="Наименования столбцов"
+        )
+
+        self.block_names: dict = self._group_columns(
+            reference=reference_dkp,
+            group_index=3,
+            column_index=2,
+            filter_key=0,
+            filter_value="Наименования блоков"
+        )
+
+        self.block_table_columns: dict = self._group_nested_columns(
+            reference=reference_dkp,
+            block_index=0,
+            group_index=3,
+            column_index=2,
+            filter_key=1,
+            filter_value="Столбцы таблиц в блоках",
+        )
+        self.sheets_name: list = [column[2] for column in reference_dkp if column[0] == "Наименования листов"]
+        self.dkp_names: dict = {column[2]: column[3] for column in reference_dkp if column[0] == "Наименования в файле"}
         self.floating_columns: list = [
             "description",
             *[
                 sub_key
-                for field, sub_keys in BLOCK_TABLE_COLUMNS.items()
+                for field, sub_keys in self.block_table_columns.items()
                 if field not in NOT_COUNT_BLOCK
                 for sub_key in sub_keys.keys()
                 if sub_key.endswith(FILTER_SUFFIXES)
             ]
         ]
         self.dict_columns_position: Dict[str, Optional[int]] = {
-            **{key: None for key in COLUMN_NAMES},
+            **{key: None for key in self.columns_names},
             **{
                 sub_key: None
-                for field, sub_keys in BLOCK_TABLE_COLUMNS.items()
+                for field, sub_keys in self.block_table_columns.items()
                 if field not in NOT_COUNT_BLOCK
                 for sub_key in sub_keys.keys()
             }
@@ -52,6 +82,89 @@ class DKP(object):
             "reimbursable_sign_76": None,
             "natural_indicators_teus": None
         }
+
+    @staticmethod
+    def _group_columns(
+        reference: Sequence,
+        group_index: int,
+        column_index: int,
+        filter_key: int = None,
+        filter_value: str = None
+    ):
+        """
+        Groups columns of a given `reference` by a given `group_index` and then by a given `column_index`.
+
+        If `filter_key` and `filter_value` are provided, it filters the rows of `reference` that have the value
+        `filter_value` in the column with index `filter_key`.
+
+        :param reference: The sequence of rows to group.
+        :param group_index: The index of the column to group the rows by.
+        :param column_index: The index of the column to group by after grouping by `group_index`.
+        :param filter_key: The index of the column to filter the rows by.
+        :param filter_value: The value of the column with index `filter_key` to filter the rows by.
+        :return: A dictionary of dictionaries, where the keys of the outer dictionary are the values of the column
+                 with index `group_index`, and the keys of the inner dictionaries are the values of the column with
+                 index `column_index`, and the values of the inner dictionaries are tuples of the values of the column
+                 with index `column_index`.
+        """
+        result: dict = {}
+        for row in reference:
+            if filter_key is None or row[filter_key] == filter_value:
+                if row[group_index] in result:
+                    result[row[group_index]] = result[row[group_index]] + (row[column_index],)
+                else:
+                    result[row[group_index]] = (row[column_index],)
+        return result
+
+    @staticmethod
+    def _group_nested_columns(
+        reference: Sequence,
+        block_index: int,
+        group_index: int,
+        column_index: int,
+        filter_key: int,
+        filter_value: str
+    ):
+        """
+        Groups nested columns of a given `reference` by specified indices.
+
+        This function processes a sequence of rows and groups them hierarchically based on the values at
+        specified indices. It first groups the rows by `block_index` and within each block, it groups by `group_index`.
+        It filters the rows using a specified `filter_key` and `filter_value`, only including rows
+        that match the filter criteria.
+
+        :param reference: The sequence of rows to group.
+        :param block_index: The index of the column to group the blocks by.
+        :param group_index: The index of the column to group within each block.
+        :param column_index: The index of the column whose values are to be collected in the groups.
+        :param filter_key: The index of the column to filter the rows by.
+        :param filter_value: The value that the column at `filter_key` must equal for a row to be included.
+        :return: A nested dictionary where the outer keys correspond to unique values of the column at `block_index`,
+                 the inner keys correspond to unique values of the column at `group_index`, and the inner values
+                 are tuples of values from the column at `column_index`.
+        """
+        result: dict = {}
+        for row in reference:
+            if row[filter_key] == filter_value:
+                block_key: str = row[block_index]
+                table_key: str = row[group_index]
+                if block_key not in result:
+                    result[block_key] = {}
+                if table_key in result[block_key]:
+                    result[block_key][table_key] = result[block_key][table_key] + (row[column_index],)
+                else:
+                    result[block_key][table_key] = (row[column_index],)
+        return result
+
+    @staticmethod
+    def get_reference() -> Sequence:
+        client: Client = get_client(
+            host=get_my_env_var('HOST'),
+            database=get_my_env_var('DATABASE'),
+            username=get_my_env_var('USERNAME_DB'),
+            password=get_my_env_var('PASSWORD')
+        )
+        return client.query("SELECT * FROM reference_dkp").result_rows
 
     @staticmethod
     def _clean_number(value: str) -> Union[float, int]:
@@ -93,8 +206,7 @@ class DKP(object):
         z.update(y)  # modifies z with keys and values of y
         return z
 
-    @staticmethod
-    def _get_list_columns() -> List[str]:
+    def _get_list_columns(self) -> List[str]:
         """
         Returns a list of all possible column names.
 
@@ -104,7 +216,7 @@ class DKP(object):
         :return: A list of column names.
         """
         list_columns: list = []
-        for keys in list(COLUMN_NAMES.values()):
+        for keys in list(self.columns_names.values()):
             list_columns.extend(iter(keys))
         return list_columns
 
@@ -212,7 +324,7 @@ class DKP(object):
             dict_columns=self.dict_block_position,
             message="Блоки текста отсутствуют в файле или изменены"
         )
-        self.get_columns_position(row, [0, len(row)], COLUMN_NAMES, self.dict_columns_position)
+        self.get_columns_position(row, [0, len(row)], self.columns_names, self.dict_columns_position)
 
         items: list = list(self.dict_block_position.items())
         dict_block_position_ranges = {
@@ -221,7 +333,7 @@ class DKP(object):
         }
 
         for col, block_position in dict_block_position_ranges.items():
-            if repeated_column := BLOCK_TABLE_COLUMNS.get(col):
+            if repeated_column := self.block_table_columns.get(col):
                 self.get_columns_position(row, block_position, repeated_column, self.dict_columns_position)
 
         dict_columns_position: dict = self.dict_columns_position.copy()
@@ -328,8 +440,9 @@ class DKP(object):
             return self._clean_number(value)
         except (ValueError, TypeError) as e:
             logger.warning(
-                f"Failed to convert value '{value}' to number: {str(e)}. "
-                f"Returning original value."
+                f"Value conversion failed. "
+                f"Original value: '{value}' (type: {type(value).__name__}). "
+                f"Error details: {str(e)}. Returning original value."
             )
             return value
 
@@ -386,12 +499,12 @@ class DKP(object):
 
             "container_count": next((
                 self.parse_value(row, key)
-                for key, val in BLOCK_TABLE_COLUMNS["natural_indicators_ktk"].items()
+                for key, val in self.block_table_columns["natural_indicators_ktk"].items()
                 if month_string in val
             ), None),
             "teu": next((
                 self.parse_value(row, key)
-                for key, val in BLOCK_TABLE_COLUMNS["natural_indicators_teus"].items()
+                for key, val in self.block_table_columns["natural_indicators_teus"].items()
                 if month_string in val
             ), None),
 
@@ -399,8 +512,8 @@ class DKP(object):
             "original_file_parsed_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
-        for block_key in [key for key in BLOCK_TABLE_COLUMNS if key not in NOT_COUNT_BLOCK]:
-            for field in BLOCK_TABLE_COLUMNS[block_key]:
+        for block_key in [key for key in self.block_table_columns if key not in NOT_COUNT_BLOCK]:
+            for field in self.block_table_columns[block_key]:
                 parsed_record[field] = self.parse_value(row, field)
 
         return self._merge_two_dicts(metadata, parsed_record)
@@ -419,13 +532,13 @@ class DKP(object):
         """
         logger.info(f'File - {self.basename_filename}. Datetime - {datetime.now()}')
         # Match department
-        dkp_pattern: str = '|'.join(map(re.escape, DKP_NAMES.keys()))
+        dkp_pattern: str = '|'.join(map(re.escape, self.dkp_names.keys()))
         department_match: Match = re.search(rf'{dkp_pattern}', self.basename_filename)
         if not department_match:
             self.send_error(
                 message='Error code 10: Department не указан в файле! Файл:', error_code=10
             )
-        metadata: dict = {'department': DKP_NAMES[f"{department_match.group(0)}"]}
+        metadata: dict = {'department': self.dkp_names[f"{department_match.group(0)}"]}
         # Match year
         year_match: Match = re.search(r'\d{4}', self.basename_filename)
         if not year_match:
@@ -478,7 +591,7 @@ class DKP(object):
             if self._get_count_match_of_header(row, list_columns) >= count_match_header:
                 self.check_errors_in_header(row)
             elif not self.dict_columns_position["client"]:
-                self.get_columns_position(row, [0, len(row)], BLOCK_NAMES, self.dict_block_position)
+                self.get_columns_position(row, [0, len(row)], self.block_names, self.dict_block_position)
             elif self._is_table_starting(row):
                 try:
                     list_data.extend(
@@ -510,7 +623,7 @@ class DKP(object):
         try:
             sheets: list = pd.ExcelFile(self.filename).sheet_names
             logger.info(f"Sheets is {sheets}")
-            needed_sheet: list = [sheet for sheet in sheets if sheet in SHEETS_NAME]
+            needed_sheet: list = [sheet for sheet in sheets if sheet in self.sheets_name]
             if len(needed_sheet) > 1:
                 raise ValueError(f"Нужных листов из SHEETS_NAME больше ОДНОГО: {needed_sheet}")
             for sheet in needed_sheet:

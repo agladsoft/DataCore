@@ -1,14 +1,15 @@
 import os
 import json
 import pytest
+from scripts.dkp import DKP
 from pathlib import PosixPath
 from typing import Optional, Union
 from _pytest.logging import LogCaptureFixture
-from scripts.dkp import DKP, COLUMN_NAMES, BLOCK_NAMES
 
 dir_path: str = f"{os.environ['XL_IDP_PATH_DATACORE']}/dkp"
 headers_columns: list = [
     "клиент",
+    "описание",
     "стратегич. проект",
     "груз",
     "направление",
@@ -23,10 +24,86 @@ headers_blocks: list = [
     "ПРИЗНАК ВОЗМЕЩАЕМЫХ (76)",
     "НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS"
 ]
+reference_dkp: list = [
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'клиент', 'client'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'описание', 'description'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'стратегич. проект', 'project'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'груз', 'cargo'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'направление', 'direction'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'бассейн', 'bay'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'принадлежность ктк', 'owner'),
+    ('Наименования столбцов', 'Столбцы основной таблицы', 'разм', 'container_size'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, ктк', 'natural_indicators_ktk'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'КОММЕНТАРИЙ К УСЛУГЕ', 'service'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'СОИСПОЛНИТЕЛЬ', 'co_executor'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'ПРИЗНАК ВОЗМЕЩАЕМЫХ (76)', 'reimbursable_sign_76'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS', 'natural_indicators_teus'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'янв', 'natural_indicators_ktk_jan'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'фев', 'natural_indicators_ktk_feb'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'мар', 'natural_indicators_ktk_mar'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'апр', 'natural_indicators_ktk_apr'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'май', 'natural_indicators_ktk_may'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'июн', 'natural_indicators_ktk_jun'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'июл', 'natural_indicators_ktk_jul'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'авг', 'natural_indicators_ktk_aug'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'сен', 'natural_indicators_ktk_sep'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'окт', 'natural_indicators_ktk_oct'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'ноя', 'natural_indicators_ktk_nov'),
+    ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'дек', 'natural_indicators_ktk_dec'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'янв', 'natural_indicators_teus_jan'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'фев', 'natural_indicators_teus_feb'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'мар', 'natural_indicators_teus_mar'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'апр', 'natural_indicators_teus_apr'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'май', 'natural_indicators_teus_may'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'июн', 'natural_indicators_teus_jun'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'июл', 'natural_indicators_teus_jul'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'авг', 'natural_indicators_teus_aug'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'сен', 'natural_indicators_teus_sep'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'окт', 'natural_indicators_teus_oct'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'ноя', 'natural_indicators_teus_nov'),
+    ('natural_indicators_teus', 'Столбцы таблиц в блоках', 'дек', 'natural_indicators_teus_dec'),
+    ('Наименования листов', 'ПЛАН ПРОДАЖ', 'ПЛАН_ПРОДАЖ', 'ПЛАН_ПРОДАЖ'),
+    ('Наименования листов', 'ПЛАН ПРОДАЖ', 'ПЛАН-ПРОДАЖ', 'ПЛАН_ПРОДАЖ'),
+    ('Наименования листов', 'ПЛАН ПРОДАЖ', 'ПЛАН ПРОДАЖ', 'ПЛАН_ПРОДАЖ'),
+    ('Наименования в файле', 'ДКП', 'ДКП_ДВ', 'ДКП ДВ'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Дв', 'ДКП ДВ'),
+    ('Наименования в файле', 'ДКП', 'дкп_дв', 'ДКП ДВ'),
+    ('Наименования в файле', 'ДКП', 'ДКП ДВ', 'ДКП ДВ'),
+    ('Наименования в файле', 'ДКП', 'ДКП_СЗФО', 'ДКП СЗФО'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Сзфо', 'ДКП СЗФО'),
+    ('Наименования в файле', 'ДКП', 'дкп_сзфо', 'ДКП СЗФО'),
+    ('Наименования в файле', 'ДКП', 'ДКП СЗФО', 'ДКП СЗФО'),
+    ('Наименования в файле', 'ДКП', 'ДКП_ЮФО', 'ДКП ЮФО'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Юфо', 'ДКП ЮФО'),
+    ('Наименования в файле', 'ДКП', 'дкп_юфо', 'ДКП ЮФО'),
+    ('Наименования в файле', 'ДКП', 'ДКП ЮФО', 'ДКП ЮФО'),
+    ('Наименования в файле', 'ДКП', 'ДКП_Сибирь', 'ДКП Сибирь'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Сибирь', 'ДКП Сибирь'),
+    ('Наименования в файле', 'ДКП', 'дкп_сибирь', 'ДКП Сибирь'),
+    ('Наименования в файле', 'ДКП', 'ДКП Сибирь', 'ДКП Сибирь'),
+    ('Наименования в файле', 'ДКП', 'ДКП_Урал', 'ДКП Урал'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Урал', 'ДКП Урал'),
+    ('Наименования в файле', 'ДКП', 'дкп_урал', 'ДКП Урал'),
+    ('Наименования в файле', 'ДКП', 'ДКП Урал', 'ДКП Урал'),
+    ('Наименования в файле', 'ДКП', 'ДКП_Центр Восток', 'ДКП Центр Восток'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Центр Восток', 'ДКП Центр Восток'),
+    ('Наименования в файле', 'ДКП', 'дкп_центр восток', 'ДКП Центр Восток'),
+    ('Наименования в файле', 'ДКП', 'ДКП Центр Восток', 'ДКП Центр Восток'),
+    ('Наименования в файле', 'ДКП', 'ДКП_Центр', 'ДКП Центр'),
+    ('Наименования в файле', 'ДКП', 'Дкп_Центр', 'ДКП Центр'),
+    ('Наименования в файле', 'ДКП', 'дкп_центр', 'ДКП Центр'),
+    ('Наименования в файле', 'ДКП', 'ДКП Центр', 'ДКП Центр')
+]
+
+
+# Фикстура для подмены метода get_reference
+@pytest.fixture
+def mock_get_reference(mocker):
+    mocker.patch("scripts.dkp.DKP.get_reference", return_value=reference_dkp)
 
 
 @pytest.fixture
-def dkp_instance() -> DKP:
+def dkp_instance(mock_get_reference) -> DKP:
     """
     A fixture that provides a DKP instance.
 
@@ -36,7 +113,10 @@ def dkp_instance() -> DKP:
 
     :return: An instance of the DKP class.
     """
-    return DKP(filename=f"{dir_path}/done/ДКП_ЮФО_ПП_2024_ОП_v3 от 27.09.2023.xlsx", folder=f"{dir_path}/json")
+    return DKP(
+        filename=f"{dir_path}/done/ДКП_ЮФО_ПП_2024_ОП_v3 от 27.09.2023.xlsx",
+        folder=f"{dir_path}/json",
+    )
 
 
 def test_is_digit(dkp_instance: DKP) -> None:
@@ -103,7 +183,7 @@ def test_get_list_columns(dkp_instance: DKP) -> None:
     :return: None
     """
     list_columns = dkp_instance._get_list_columns()
-    assert len(list_columns) >= 8
+    assert list_columns == headers_columns
 
 
 @pytest.mark.parametrize("input_str, expected_result", [
@@ -131,8 +211,9 @@ def test_remove_symbols_in_columns(dkp_instance: DKP, input_str: str, expected_r
 
 
 @pytest.mark.parametrize("row, block_position, headers, dict_columns_position, expected_result", [
-    (headers_columns, [0, len(headers_columns)], COLUMN_NAMES, {
+    (headers_columns, [0, len(headers_columns)], "columns_names", {
         "client": None,
+        "description": None,
         "project": None,
         "cargo": None,
         "direction": None,
@@ -141,14 +222,15 @@ def test_remove_symbols_in_columns(dkp_instance: DKP, input_str: str, expected_r
         "container_size": None
     }, {
         "client": 0,
-        "project": 1,
-        "cargo": 2,
-        "direction": 3,
-        "bay": 4,
-        "owner": 5,
-        "container_size": 6
+        "description": 1,
+        "project": 2,
+        "cargo": 3,
+        "direction": 4,
+        "bay": 5,
+        "owner": 6,
+        "container_size": 7
     }),
-    (headers_blocks, [0, len(headers_blocks)], BLOCK_NAMES, {
+    (headers_blocks, [0, len(headers_blocks)], "block_names", {
         "natural_indicators_ktk": None,
         "service": None,
         "co_executor": None,
@@ -166,7 +248,7 @@ def test_get_columns_position(
     dkp_instance: DKP,
     row: list,
     block_position: list,
-    headers: dict,
+    headers: str,
     dict_columns_position: dict,
     expected_result: dict
 ) -> None:
@@ -179,8 +261,8 @@ def test_get_columns_position(
     :param dkp_instance: A DKP object.
     :return: None
     """
+    headers = getattr(dkp_instance, headers)
     dkp_instance.get_columns_position(row, block_position, headers, dict_columns_position)
-
     assert dict_columns_position == expected_result
 
 
@@ -347,23 +429,6 @@ def test_write_to_json(dkp_instance: DKP, tmp_path: PosixPath) -> None:
     assert first_entry["project"] == "Test Project"
 
 
-def setup_column_positions(dkp_instance: DKP, columns_positions: dict) -> None:
-    """
-    Sets up the column positions in the DKP instance.
-
-    This function iterates over the provided dictionary of column positions
-    and assigns each column's position to the DKP instance's
-    `dict_columns_position` attribute.
-
-    :param dkp_instance: An instance of the DKP class.
-    :param columns_positions: A dictionary with column names as keys and their
-                              respective positions as values.
-    :return: None
-    """
-    for column, position in columns_positions.items():
-        dkp_instance.dict_columns_position[column] = position
-
-
 def validate_record_fields(record: dict, expected_values: dict) -> None:
     """
     Validates that the given record contains the expected values in its fields.
@@ -375,37 +440,53 @@ def validate_record_fields(record: dict, expected_values: dict) -> None:
         assert record[key] == expected_value, f"Mismatch for '{key}': expected {expected_value}, got {record[key]}"
 
 
-def test_get_content_in_table(dkp_instance: DKP) -> None:
+@pytest.mark.parametrize(
+    "row, columns_positions, month_string, expected_values", [
+        (
+            ["1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ", None, "20"],
+            {
+                "client": 2,
+                "project": 3,
+                "cargo": 4,
+                "direction": 5,
+                "bay": 6,
+                "owner": 7,
+                "container_size": 8,
+            },
+            "Январь",
+            {
+                "client": "Новые клиенты",
+                "project": "Без проекта",
+                "cargo": "Китай",
+                "direction": "импорт",
+                "bay": "АЧБ",
+                "container_size": 20,
+                "month_string": "Январь",
+                "date": "2024-01-01",
+            },
+        ),
+    ],
+)
+def test_get_content_in_table(
+    dkp_instance: DKP,
+    row: list,
+    columns_positions: dict,
+    month_string: str,
+    expected_values: dict
+) -> None:
     """
     Tests the `get_content_in_table` method.
 
-    This test verifies that the method correctly extracts the fields from the table
-    and converts the date to the correct format.
-
     :param dkp_instance: An instance of the DKP class.
+    :param row: A list representing a row of data.
+    :param columns_positions: A dictionary mapping column names to their positions.
+    :param month_string: The month as a string.
+    :param expected_values: The expected values in the resulting record.
     :return: None
     """
     metadata: dict = dkp_instance.extract_metadata_from_filename()
-    row: list = ["1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ", None, "20"]
-    columns_positions: dict = {
-        "client": 2,
-        "project": 3,
-        "cargo": 4,
-        "direction": 5,
-        "bay": 6,
-        "owner": 7,
-        "container_size": 8,
-    }
-    expected_values: dict = {
-        "client": "Новые клиенты",
-        "project": "Без проекта",
-        "cargo": "Китай",
-        "direction": "импорт",
-        "bay": "АЧБ",
-        "container_size": 20,
-        "month_string": "Январь",
-        "date": "2024-01-01",
-    }
-    setup_column_positions(dkp_instance, columns_positions)
-    record: dict = dkp_instance.get_content_in_table(1, "Январь", row, metadata)
+    for column, position in columns_positions.items():
+        dkp_instance.dict_columns_position[column] = position
+
+    record: dict = dkp_instance.get_content_in_table(1, month_string, row, metadata)
     validate_record_fields(record, expected_values)

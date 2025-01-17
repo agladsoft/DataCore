@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     env:  # Установка переменных окружения для всей задачи
       PYTHONPATH: ${{ github.workspace }}
-      TOKEN_TELEGRAM: test
-      CHAT_ID: test
-      TOPIC: test
-      ID: test
+      TOKEN_TELEGRAM: ${{ secrets.TOKEN_TELEGRAM }}
+      CHAT_ID: ${{ secrets.CHAT_ID }}
+      TOPIC: ${{ secrets.TOPIC }}
+      ID: ${{ secrets.ID }}
 
     steps:
     - uses: actions/checkout@v4

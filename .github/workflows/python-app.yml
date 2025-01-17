@@ -1,0 +1,67 @@
+name: Python application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:  # Установка переменных окружения для всей задачи
+      PYTHONPATH: ${{ github.workspace }}
+      TOKEN_TELEGRAM: test
+      CHAT_ID: test
+      TOPIC: test
+      ID: test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.8"
+
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: Debug environment variables
+      run: |
+        echo "TOKEN_TELEGRAM=$TOKEN_TELEGRAM"
+        echo "CHAT_ID=$CHAT_ID"
+        echo "TOPIC=$TOPIC"
+        echo "ID=$ID"
+
+    - name: Check required environment variables
+      run: |
+        if [ -z "$TOKEN_TELEGRAM" ]; then echo "TOKEN_TELEGRAM is not set"; exit 1; fi
+        if [ -z "$CHAT_ID" ]; then echo "CHAT_ID is not set"; exit 1; fi
+        if [ -z "$TOPIC" ]; then echo "TOPIC is not set"; exit 1; fi
+        if [ -z "$ID" ]; then echo "ID is not set"; exit 1; fi
+
+    - name: Test with pytest
+      run: |
+        pytest

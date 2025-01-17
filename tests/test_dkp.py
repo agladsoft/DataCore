@@ -6,7 +6,6 @@ from pathlib import PosixPath
 from typing import Optional, Union
 from _pytest.logging import LogCaptureFixture
 
-dir_path: str = f"{os.environ['XL_IDP_PATH_DATACORE']}/dkp"
 headers_columns: list = [
     "клиент",
     "описание",
@@ -103,7 +102,7 @@ def mock_get_reference(mocker):
 
 
 @pytest.fixture
-def dkp_instance(mock_get_reference) -> DKP:
+def dkp_instance(mock_get_reference, tmp_path: PosixPath) -> DKP:
     """
     A fixture that provides a DKP instance.
 
@@ -114,8 +113,8 @@ def dkp_instance(mock_get_reference) -> DKP:
     :return: An instance of the DKP class.
     """
     return DKP(
-        filename=f"{dir_path}/done/ДКП_ЮФО_ПП_2024_ОП_v3 от 27.09.2023.xlsx",
-        folder=f"{dir_path}/json",
+        filename=f"{tmp_path}/done/ДКП_ЮФО_ПП_2024_ОП_v3 от 27.09.2023.xlsx",
+        folder=f"{tmp_path}/json",
     )
 
 

@@ -1,12 +1,28 @@
 import os
 import json
 import pytest
-from scripts.dkp import DKP
 from pathlib import PosixPath
 from typing import Optional, Union
 from _pytest.logging import LogCaptureFixture
+from scripts.dkp import DKP, COLUMN_NAMES, BLOCK_NAMES
 
 dir_path: str = f"{os.environ['XL_IDP_PATH_DATACORE']}/dkp"
+headers_columns: list = [
+    "клиент",
+    "стратегич. проект",
+    "груз",
+    "направление",
+    "бассейн",
+    "принадлежность ктк",
+    "разм"
+]
+headers_blocks: list = [
+    "НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, ктк",
+    "КОММЕНТАРИЙ К УСЛУГЕ",
+    "СОИСПОЛНИТЕЛЬ",
+    "ПРИЗНАК ВОЗМЕЩАЕМЫХ (76)",
+    "НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS"
+]
 
 
 @pytest.fixture
@@ -76,6 +92,20 @@ def test_merge_two_dicts(dkp_instance: DKP, dict1: dict, dict2: dict, expected: 
     assert merged == expected
 
 
+def test_get_list_columns(dkp_instance: DKP) -> None:
+    """
+    Tests the `_get_list_columns` method.
+
+    This test verifies that the method correctly returns a list of all possible column names.
+    It checks that the length of the list is greater than or equal to 8.
+
+    :param dkp_instance: A DKP object.
+    :return: None
+    """
+    list_columns = dkp_instance._get_list_columns()
+    assert len(list_columns) >= 8
+
+
 @pytest.mark.parametrize("input_str, expected_result", [
     ("  test   string\n", "test string"),
     ("\n  hello world \n", "hello world"),
@@ -98,6 +128,60 @@ def test_remove_symbols_in_columns(dkp_instance: DKP, input_str: str, expected_r
     """
     result: str = dkp_instance._remove_symbols_in_columns(input_str)
     assert result == expected_result
+
+
+@pytest.mark.parametrize("row, block_position, headers, dict_columns_position, expected_result", [
+    (headers_columns, [0, len(headers_columns)], COLUMN_NAMES, {
+        "client": None,
+        "project": None,
+        "cargo": None,
+        "direction": None,
+        "bay": None,
+        "owner": None,
+        "container_size": None
+    }, {
+        "client": 0,
+        "project": 1,
+        "cargo": 2,
+        "direction": 3,
+        "bay": 4,
+        "owner": 5,
+        "container_size": 6
+    }),
+    (headers_blocks, [0, len(headers_blocks)], BLOCK_NAMES, {
+        "natural_indicators_ktk": None,
+        "service": None,
+        "co_executor": None,
+        "reimbursable_sign_76": None,
+        "natural_indicators_teus": None
+    }, {
+        "natural_indicators_ktk": 0,
+        "service": 1,
+        "co_executor": 2,
+        "reimbursable_sign_76": 3,
+        "natural_indicators_teus": 4
+    })
+])
+def test_get_columns_position(
+    dkp_instance: DKP,
+    row: list,
+    block_position: list,
+    headers: dict,
+    dict_columns_position: dict,
+    expected_result: dict
+) -> None:
+    """
+    Tests the `get_columns_position` method.
+
+    This test verifies that the method correctly returns a list of all possible column names.
+    It checks that the length of the list is greater than or equal to 8.
+
+    :param dkp_instance: A DKP object.
+    :return: None
+    """
+    dkp_instance.get_columns_position(row, block_position, headers, dict_columns_position)
+
+    assert dict_columns_position == expected_result
 
 
 @pytest.mark.parametrize("input_value, expected_output", [

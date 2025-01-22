@@ -4,6 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 from re import Match
+from pandas import DataFrame
 from datetime import datetime
 from scripts.settings_dkp import *
 from scripts.app_logger import get_logger
@@ -27,7 +28,7 @@ class DKP(object):
         self.filename: str = filename
         self.basename_filename: str = os.path.basename(filename)
         self.folder: str = folder
-        reference_dkp: Sequence = self.get_reference()
+        reference_dkp: Sequence = self._get_reference()
         self.columns_names: dict = self._group_columns(
             reference=reference_dkp,
             group_index=3,
@@ -80,7 +81,9 @@ class DKP(object):
             "service": None,
             "co_executor": None,
             "reimbursable_sign_76": None,
-            "natural_indicators_teus": None
+            "natural_indicators_teus": None,
+            "profit_plan": None,
+            "costs_plan": None
         }
 
     @staticmethod
@@ -157,7 +160,7 @@ class DKP(object):
         return result
 
     @staticmethod
-    def get_reference() -> Sequence:
+    def _get_reference() -> Sequence:
         client: Client = get_client(
             host=get_my_env_var('HOST'),
             database=get_my_env_var('DATABASE'),
@@ -303,7 +306,7 @@ class DKP(object):
             )
             sys.exit(2)
 
-    def check_errors_in_header(self, row: list) -> None:
+    def check_errors_in_header(self, row: list, max_df_columns: int) -> None:
         """
         Checks if there are any empty columns in the header of the given row.
 
@@ -318,13 +321,14 @@ class DKP(object):
         and then exits with the error code 2.
 
         :param row: The row of the Excel file to check.
+        :param max_df_columns: The maximum number of columns in the DataFrame.
         :return: None
         """
         self.check_errors_in_columns(
             dict_columns=self.dict_block_position,
             message="Блоки текста отсутствуют в файле или изменены"
         )
-        self.get_columns_position(row, [0, len(row)], self.columns_names, self.dict_columns_position)
+        self.get_columns_position(row, [0, max_df_columns], self.columns_names, self.dict_columns_position)
 
         items: list = list(self.dict_block_position.items())
         dict_block_position_ranges = {
@@ -507,13 +511,32 @@ class DKP(object):
                 for key, val in self.block_table_columns["natural_indicators_teus"].items()
                 if month_string in val
             ), None),
+            "profit_plan": next((
+                self.parse_value(row, key)
+                for key, val in self.block_table_columns["profit_plan"].items()
+                if month_string in val
+            ), None),
+            "costs_plan": next((
+                self.parse_value(row, key)
+                for key, val in self.block_table_columns["costs_plan"].items()
+                if month_string in val
+            ), None),
 
             "original_file_name": self.basename_filename,
             "original_file_parsed_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
+        profit_plan: float = parsed_record.get("profit_plan") or 0
+        costs_plan: float = parsed_record.get("costs_plan") or 0
+        parsed_record["margin_plan"] = profit_plan - costs_plan
 
+        fields_check: list = ["client", "container_size"]
         for block_key in [key for key in self.block_table_columns if key not in NOT_COUNT_BLOCK]:
             for field in self.block_table_columns[block_key]:
+                for column in fields_check:
+                    if column in field:
+                        value = self.parse_value(row, field)
+                        if value != parsed_record[column]:
+                            raise ValueError(f"{column}: '{parsed_record[column]}' not equal to {field}: '{value}'")
                 parsed_record[field] = self.parse_value(row, field)
 
         return self._merge_two_dicts(metadata, parsed_record)
@@ -565,7 +588,7 @@ class DKP(object):
         telegram(error_message)
         sys.exit(error_code)
 
-    def parse_sheet(self, df: pd.DataFrame, count_match_header: int = 7) -> None:
+    def parse_sheet(self, df: pd.DataFrame, max_df_columns: int, count_match_header: int = 7) -> None:
         """
         Parse a sheet of Excel file.
 
@@ -579,6 +602,7 @@ class DKP(object):
         and then exits with the error code 5.
 
         :param df: The pandas DataFrame representing the sheet of the Excel file.
+        :param max_df_columns: The maximum number of columns in the DataFrame.
         :param count_match_header: The coefficient to determine if a row is a header or not.
         :return: None
         """
@@ -589,7 +613,7 @@ class DKP(object):
         for index, row in df.iterrows():
             row = list(row.to_dict().values())
             if self._get_count_match_of_header(row, list_columns) >= count_match_header:
-                self.check_errors_in_header(row)
+                self.check_errors_in_header(row, max_df_columns)
             elif not self.dict_columns_position["client"]:
                 self.get_columns_position(row, [0, len(row)], self.block_names, self.dict_block_position)
             elif self._is_table_starting(row):
@@ -612,24 +636,30 @@ class DKP(object):
         """
         The main method of the class.
 
-        This method reads the Excel file given by the filename, extracts the needed sheet,
+        This method reads the Excel file given by the filename, extracts the needed sheets,
         parses the sheet, and writes the extracted data to a JSON file.
 
         If an error occurs during processing, it logs an error message,
         sends a message to Telegram with the error message,
-        and exits with the error code 1.
+        and exits with the error code 6.
         :return: None
         """
         try:
             sheets: list = pd.ExcelFile(self.filename).sheet_names
             logger.info(f"Sheets is {sheets}")
-            needed_sheet: list = [sheet for sheet in sheets if sheet in self.sheets_name]
-            if len(needed_sheet) > 1:
-                raise ValueError(f"Нужных листов из SHEETS_NAME больше ОДНОГО: {needed_sheet}")
-            for sheet in needed_sheet:
-                df = pd.read_excel(self.filename, sheet_name=sheet, dtype=str, header=None)
-                df = df.dropna(how='all').replace({np.nan: None, "NaT": None})
-                self.parse_sheet(df)
+            needed_sheets: list = [sheet for sheet in sheets if sheet in self.sheets_name]
+            if len(needed_sheets) > 3:
+                raise ValueError(f"Нужных листов из SHEETS_NAME больше нужного: {needed_sheets}")
+            dfs: List[DataFrame] = [
+                pd.read_excel(self.filename, sheet_name=sheet, dtype=str, header=None)
+                .dropna(how="all")
+                .replace({np.nan: None, "NaT": None})
+                for sheet in needed_sheets
+            ]
+            dfs.sort(key=lambda df: df.shape[1], reverse=True)  # Сортируем DataFrames по количеству столбцов (убывание)
+            merged_df: DataFrame = pd.concat(dfs, axis=1)
+            merged_df.columns = range(merged_df.shape[1])  # Индексация столбцов для последовательности
+            self.parse_sheet(merged_df, dfs[0].shape[1])
         except Exception as exception:
             logger.error(f"Ошибка при чтении файла {self.basename_filename}: {exception}")
             telegram(f'Error code 6: Ошибка при обработке файла! Файл: {self.basename_filename}! Ошибка: {exception}')

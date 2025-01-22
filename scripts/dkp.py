@@ -534,9 +534,10 @@ class DKP(object):
             for field in self.block_table_columns[block_key]:
                 for column in fields_check:
                     if column in field:
-                        value = self.parse_value(row, field)
-                        if value != parsed_record[column]:
-                            raise ValueError(f"{column}: '{parsed_record[column]}' not equal to {field}: '{value}'")
+                        val1: Union[str, float, int, bool, None] = self.parse_value(row, field) or None
+                        val2: Union[str, float, int, bool, None] = parsed_record[column] or None
+                        if val1 != val2:
+                            raise ValueError(f"{column}: '{val2}' not equal to {field}: '{val1}'")
                 parsed_record[field] = self.parse_value(row, field)
 
         return self._merge_two_dicts(metadata, parsed_record)

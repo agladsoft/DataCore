@@ -409,8 +409,6 @@ class DKP(object):
         if position is None or position >= len(rows):
             return None
         value: str = rows[position]
-        if isinstance(value, float):
-            print(value)
         return value.strip() if value else None
 
     def _convert_value(self, value: Optional[str]) -> Union[str, float, int, bool, None]:

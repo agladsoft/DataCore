@@ -409,6 +409,8 @@ class DKP(object):
         if position is None or position >= len(rows):
             return None
         value: str = rows[position]
+        if isinstance(value, float):
+            print(value)
         return value.strip() if value else None
 
     def _convert_value(self, value: Optional[str]) -> Union[str, float, int, bool, None]:
@@ -623,7 +625,7 @@ class DKP(object):
                         self.get_content_in_table(index_month, month_string, row, metadata)
                         for index_month, month_string in enumerate(MONTH_NAMES, start=1)
                     )
-                except (IndexError, ValueError, TypeError) as exception:
+                except (IndexError, ValueError, TypeError, AttributeError) as exception:
                     telegram(
                         f"Error code 5: Ошибка возникла в строке {index + 1}! "
                         f"Файл: {self.basename_filename}. Exception - {exception}"
@@ -651,14 +653,15 @@ class DKP(object):
             needed_sheets: list = [sheet for sheet in sheets if sheet in self.sheets_name]
             if len(needed_sheets) > 3:
                 raise ValueError(f"Нужных листов из SHEETS_NAME больше нужного: {needed_sheets}")
+            replace_dict: dict = {np.nan: None, "NaT": None}
             dfs: List[DataFrame] = [
                 pd.read_excel(self.filename, sheet_name=sheet, dtype=str, header=None)
                 .dropna(how="all")
-                .replace({np.nan: None, "NaT": None})
+                .replace(replace_dict)
                 for sheet in needed_sheets
             ]
             dfs.sort(key=lambda df: df.shape[1], reverse=True)  # Сортируем DataFrames по количеству столбцов (убывание)
-            merged_df: DataFrame = pd.concat(dfs, axis=1)
+            merged_df: DataFrame = pd.concat(dfs, axis=1).replace(replace_dict)
             merged_df.columns = range(merged_df.shape[1])  # Индексация столбцов для последовательности
             self.parse_sheet(merged_df, dfs[0].shape[1])
         except Exception as exception:

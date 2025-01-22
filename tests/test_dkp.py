@@ -154,6 +154,25 @@ def dkp_instance(mock_get_reference, tmp_path: PosixPath) -> DKP:
     ),
 ])
 def test_group_columns(dkp_instance: DKP, label_name: str, expected: dict) -> None:
+    """
+    Tests the `_group_columns` method.
+
+    This test validates the _group_columns method by ensuring it groups columns
+    from a reference dataset into the expected dictionary structure.
+    It uses parametrize to test various inputs, filtering columns based on label_name.
+    The test leverages dkp_instance and reference_dkp fixtures for setup and verifies results with assert.
+
+    The test function will be called with the following sets of input
+    arguments:
+
+    *   `("Наименования столбцов", {...})`
+    *   `("Наименования блоков", {...})`
+
+    The expected dictionaries are defined as follows:
+
+    *   `{"client": ("клиент",), ...}`
+    *   `{"natural_indicators_ktk": ("НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, ктк",), ...}`
+    """
     columns_names: dict = dkp_instance._group_columns(
         reference=reference_dkp,
         group_index=3,
@@ -208,6 +227,18 @@ def test_group_columns(dkp_instance: DKP, label_name: str, expected: dict) -> No
     ),
 ])
 def test_group_nested_columns(dkp_instance: DKP, label_name: str, expected: dict) -> None:
+    """
+    Tests the `_group_nested_columns` method.
+
+    This test verifies that the `_group_nested_columns` method correctly groups
+    nested columns from a provided reference dataset. It checks whether the
+    method produces the expected nested dictionary structure based on the given
+    indices for grouping and filtering criteria.
+
+    :param dkp_instance: An instance of the DKP class.
+    :param label_name: The label used to filter the reference data.
+    :param expected: The expected nested dictionary structure after grouping.
+    """
     block_table_columns: dict = dkp_instance._group_nested_columns(
         reference=reference_dkp,
         block_index=0,

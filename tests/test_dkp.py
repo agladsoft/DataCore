@@ -590,41 +590,76 @@ def validate_record_fields(record: dict, expected_values: dict) -> None:
         assert record[key] == expected_value, f"Mismatch for '{key}': expected {expected_value}, got {record[key]}"
 
 
-@pytest.mark.parametrize(
-    "row, columns_positions, month_string, expected_values", [
-        (
-            ["1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ", None, "20", "Новые клиенты", "20", "Новые клиенты", "20"],
-            {
-                "client": 2,
-                "project": 3,
-                "cargo": 4,
-                "direction": 5,
-                "bay": 6,
-                "owner": 7,
-                "container_size": 8,
-                "profit_plan_client": 9,
-                "profit_plan_container_size": 10,
-                "costs_plan_client": 11,
-                "costs_plan_container_size": 12,
-            },
-            "Январь",
-            {
-                "client": "Новые клиенты",
-                "project": "Без проекта",
-                "cargo": "Китай",
-                "direction": "импорт",
-                "bay": "АЧБ",
-                "container_size": 20,
-                "profit_plan_client": "Новые клиенты",
-                "profit_plan_container_size": 20,
-                "costs_plan_client": "Новые клиенты",
-                "costs_plan_container_size": 20,
-                "month_string": "Январь",
-                "date": "2024-01-01",
-            },
-        ),
-    ],
-)
+@pytest.mark.parametrize("row, columns_positions, month_string, expected_values", [
+    (
+        [
+            "1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ",
+            None, "20", "Новые клиенты", "20", "Новые клиенты", "20"
+        ],
+        {
+            "client": 2,
+            "project": 3,
+            "cargo": 4,
+            "direction": 5,
+            "bay": 6,
+            "owner": 7,
+            "container_size": 8,
+            "profit_plan_client": 9,
+            "profit_plan_container_size": 10,
+            "costs_plan_client": 11,
+            "costs_plan_container_size": 12,
+        },
+        "Январь",
+        {
+            "client": "Новые клиенты",
+            "project": "Без проекта",
+            "cargo": "Китай",
+            "direction": "импорт",
+            "bay": "АЧБ",
+            "container_size": 20,
+            "profit_plan_client": "Новые клиенты",
+            "profit_plan_container_size": 20,
+            "costs_plan_client": "Новые клиенты",
+            "costs_plan_container_size": 20,
+            "month_string": "Январь",
+            "date": "2024-01-01",
+        },
+    ),
+    (
+        [
+            "1", "РУСКОН ООО", None, "Без проекта", "Китай", "импорт", "АЧБ",
+            None, "20", 0, "20", 0, "20"
+        ],
+        {
+            "client": 2,
+            "project": 3,
+            "cargo": 4,
+            "direction": 5,
+            "bay": 6,
+            "owner": 7,
+            "container_size": 8,
+            "profit_plan_client": 9,
+            "profit_plan_container_size": 10,
+            "costs_plan_client": 11,
+            "costs_plan_container_size": 12,
+        },
+        "Январь",
+        {
+            "client": None,
+            "project": "Без проекта",
+            "cargo": "Китай",
+            "direction": "импорт",
+            "bay": "АЧБ",
+            "container_size": 20,
+            "profit_plan_client": None,
+            "profit_plan_container_size": 20,
+            "costs_plan_client": None,
+            "costs_plan_container_size": 20,
+            "month_string": "Январь",
+            "date": "2024-01-01",
+        },
+    ),
+])
 def test_get_content_in_table(
     dkp_instance: DKP,
     row: list,

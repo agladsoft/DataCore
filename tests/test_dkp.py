@@ -449,6 +449,46 @@ def test_convert_value(
     assert result == expected_output
 
 
+@pytest.mark.parametrize("value_with_field_name, expected", [
+    (("123.45", "profit_plan_jan"), 123.45),
+    (("123", "profit_plan_jan"), 123),
+    ((None, "profit_plan_jan"), None),
+    (("string", "profit_plan_jan"), "string"),
+])
+def test_check_numeric(
+    dkp_instance: DKP,
+    value_with_field_name: tuple,
+    expected: Union[float, str]
+) -> None:
+    """
+    Tests the `_check_numeric` method.
+
+    This test verifies that the method correctly checks if the given value is numeric and returns it as a number.
+    It checks that the method raises a ValueError if the value is None or non-numeric.
+    It checks that the method raises a ValueError with a message indicating that the value is non-numeric.
+
+    The test uses parametrize to test various inputs, and verifies results with assert.
+
+    The test function will be called with the following sets of input arguments:
+
+    *   `("123.45", "profit_plan_jan", 123.45)`
+    *   `("123", "profit_plan_jan", 123)`
+    *   `(None, "profit_plan_jan", None)`
+    *   `("string", "profit_plan_jan", "string")`
+
+    """
+    value, field_name = value_with_field_name
+    if value is None:
+        with pytest.raises(ValueError, match=f"Поле '{field_name}' содержит значение: None"):
+            dkp_instance._check_numeric(value_with_field_name)
+    elif isinstance(value, str) and not value.replace(".", "", 1).isdigit():
+        with pytest.raises(ValueError, match=f"Поле '{field_name}' содержит нечисловое значение: {value}"):
+            dkp_instance._check_numeric(value_with_field_name)
+    else:
+        result = dkp_instance._check_numeric(value_with_field_name)
+        assert result == expected
+
+
 @pytest.mark.parametrize("basename_filename, expected", [
     ("ДКП_ДВ_ПП_2025_v6_11.10.xlsx", {"department": "ДКП ДВ", "year": 2025}),
     ("ДКП_Сибирь_ПП_2025_v4.xlsx", {"department": "ДКП Сибирь", "year": 2025}),

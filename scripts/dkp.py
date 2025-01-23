@@ -450,6 +450,28 @@ class DKP(object):
             )
             return value
 
+    @staticmethod
+    def _check_numeric(value_with_field_name: tuple) -> Union[int, float, None]:
+        """
+        Checks if the given value is numeric and returns it as a number.
+
+        If the value is None, it raises a ValueError.
+        If the value is not a number, it raises a ValueError with a message
+        indicating that the value is non-numeric.
+
+        :param value_with_field_name: The value and field name to check and convert.
+        :return: The value as a number, or raises a ValueError.
+        """
+        value, field_name = value_with_field_name
+        if field_name is None:
+            return None
+        elif value is None:
+            raise ValueError(f"Поле '{field_name}' содержит значение: None")
+        try:
+            return float(value)  # Преобразуем значение в число
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Поле '{field_name}' содержит нечисловое значение: {value}") from e
+
     def parse_value(self, rows: list, column: str) -> Union[str, float, int, bool, None]:
         """
         Extracts and converts a value from the given row.
@@ -511,16 +533,20 @@ class DKP(object):
                 for key, val in self.block_table_columns["natural_indicators_teus"].items()
                 if month_string in val
             ), None),
-            "profit_plan": next((
-                self.parse_value(row, key)
-                for key, val in self.block_table_columns["profit_plan"].items()
-                if month_string in val
-            ), None),
-            "costs_plan": next((
-                self.parse_value(row, key)
-                for key, val in self.block_table_columns["costs_plan"].items()
-                if month_string in val
-            ), None),
+            "profit_plan": self._check_numeric(
+                next((
+                    (self.parse_value(row, key), key)
+                    for key, val in self.block_table_columns["profit_plan"].items()
+                    if month_string in val
+                ), (None, None))
+            ),
+            "costs_plan": self._check_numeric(
+                next((
+                    (self.parse_value(row, key), key)
+                    for key, val in self.block_table_columns["costs_plan"].items()
+                    if month_string in val
+                ), (None, None))
+            ),
 
             "original_file_name": self.basename_filename,
             "original_file_parsed_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S")

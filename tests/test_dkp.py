@@ -21,7 +21,9 @@ headers_blocks: list = [
     "КОММЕНТАРИЙ К УСЛУГЕ",
     "СОИСПОЛНИТЕЛЬ",
     "ПРИЗНАК ВОЗМЕЩАЕМЫХ (76)",
-    "НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS"
+    "НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS",
+    "ВЫРУЧКА ОТ ПОКУПАТЕЛЯ ИТОГО",
+    "ЗАТРАТЫ ОТ СОИСПОЛНИТЕЛЕЙ ИТОГО"
 ]
 reference_dkp: list = [
     ('Наименования столбцов', 'Столбцы основной таблицы', 'клиент', 'client'),
@@ -37,6 +39,12 @@ reference_dkp: list = [
     ('Наименования блоков', 'Блоки для основной таблицы', 'СОИСПОЛНИТЕЛЬ', 'co_executor'),
     ('Наименования блоков', 'Блоки для основной таблицы', 'ПРИЗНАК ВОЗМЕЩАЕМЫХ (76)', 'reimbursable_sign_76'),
     ('Наименования блоков', 'Блоки для основной таблицы', 'НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS', 'natural_indicators_teus'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'ВЫРУЧКА ОТ ПОКУПАТЕЛЯ ИТОГО', 'profit_plan'),
+    ('Наименования блоков', 'Блоки для основной таблицы', 'ЗАТРАТЫ ОТ СОИСПОЛНИТЕЛЕЙ ИТОГО', 'costs_plan'),
+    ('profit_plan', 'Столбцы таблиц в блоках', 'клиент', 'profit_plan_client'),
+    ('profit_plan', 'Столбцы таблиц в блоках', 'разм', 'profit_plan_container_size'),
+    ('costs_plan', 'Столбцы таблиц в блоках', 'клиент', 'costs_plan_client'),
+    ('costs_plan', 'Столбцы таблиц в блоках', 'разм', 'costs_plan_container_size'),
     ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'янв', 'natural_indicators_ktk_jan'),
     ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'фев', 'natural_indicators_ktk_feb'),
     ('natural_indicators_ktk', 'Столбцы таблиц в блоках', 'мар', 'natural_indicators_ktk_mar'),
@@ -98,7 +106,7 @@ reference_dkp: list = [
 # Фикстура для подмены метода get_reference
 @pytest.fixture
 def mock_get_reference(mocker):
-    mocker.patch("scripts.dkp.DKP.get_reference", return_value=reference_dkp)
+    mocker.patch("scripts.dkp.DKP._get_reference", return_value=reference_dkp)
 
 
 @pytest.fixture
@@ -116,6 +124,130 @@ def dkp_instance(mock_get_reference, tmp_path: PosixPath) -> DKP:
         filename=f"{tmp_path}/done/ДКП_ЮФО_ПП_2024_ОП_v3 от 27.09.2023.xlsx",
         folder=f"{tmp_path}/json",
     )
+
+
+@pytest.mark.parametrize("label_name, expected", [
+    (
+        "Наименования столбцов",
+        {
+            'client': ('клиент',),
+            'description': ('описание',),
+            'project': ('стратегич. проект',),
+            'cargo': ('груз',),
+            'direction': ('направление',),
+            'bay': ('бассейн',),
+            'owner': ('принадлежность ктк',),
+            'container_size': ('разм',)
+        }
+    ),
+    (
+        "Наименования блоков",
+        {
+            'natural_indicators_ktk': ('НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, ктк',),
+            'service': ('КОММЕНТАРИЙ К УСЛУГЕ',),
+            'co_executor': ('СОИСПОЛНИТЕЛЬ',),
+            'reimbursable_sign_76': ('ПРИЗНАК ВОЗМЕЩАЕМЫХ (76)',),
+            'natural_indicators_teus': ('НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, TEUS',),
+            'profit_plan': ('ВЫРУЧКА ОТ ПОКУПАТЕЛЯ ИТОГО',),
+            'costs_plan': ('ЗАТРАТЫ ОТ СОИСПОЛНИТЕЛЕЙ ИТОГО',)
+        }
+    ),
+])
+def test_group_columns(dkp_instance: DKP, label_name: str, expected: dict) -> None:
+    """
+    Tests the `_group_columns` method.
+
+    This test validates the _group_columns method by ensuring it groups columns
+    from a reference dataset into the expected dictionary structure.
+    It uses parametrize to test various inputs, filtering columns based on label_name.
+    The test leverages dkp_instance and reference_dkp fixtures for setup and verifies results with assert.
+
+    The test function will be called with the following sets of input
+    arguments:
+
+    *   `("Наименования столбцов", {...})`
+    *   `("Наименования блоков", {...})`
+
+    The expected dictionaries are defined as follows:
+
+    *   `{"client": ("клиент",), ...}`
+    *   `{"natural_indicators_ktk": ("НАТУРАЛЬНЫЕ ПОКАЗАТЕЛИ, ктк",), ...}`
+    """
+    columns_names: dict = dkp_instance._group_columns(
+        reference=reference_dkp,
+        group_index=3,
+        column_index=2,
+        filter_key=0,
+        filter_value=label_name
+    )
+    assert columns_names == expected
+
+
+@pytest.mark.parametrize("label_name, expected", [
+    (
+        "Столбцы таблиц в блоках",
+        {
+            'profit_plan': {
+                'profit_plan_client': ('клиент',),
+                'profit_plan_container_size': ('разм',)
+            },
+            'costs_plan': {
+                'costs_plan_client': ('клиент',),
+                'costs_plan_container_size': ('разм',)
+            },
+            'natural_indicators_ktk': {
+                'natural_indicators_ktk_jan': ('янв',),
+                'natural_indicators_ktk_feb': ('фев',),
+                'natural_indicators_ktk_mar': ('мар',),
+                'natural_indicators_ktk_apr': ('апр',),
+                'natural_indicators_ktk_may': ('май',),
+                'natural_indicators_ktk_jun': ('июн',),
+                'natural_indicators_ktk_jul': ('июл',),
+                'natural_indicators_ktk_aug': ('авг',),
+                'natural_indicators_ktk_sep': ('сен',),
+                'natural_indicators_ktk_oct': ('окт',),
+                'natural_indicators_ktk_nov': ('ноя',),
+                'natural_indicators_ktk_dec': ('дек',)
+            },
+            'natural_indicators_teus': {
+                'natural_indicators_teus_jan': ('янв',),
+                'natural_indicators_teus_feb': ('фев',),
+                'natural_indicators_teus_mar': ('мар',),
+                'natural_indicators_teus_apr': ('апр',),
+                'natural_indicators_teus_may': ('май',),
+                'natural_indicators_teus_jun': ('июн',),
+                'natural_indicators_teus_jul': ('июл',),
+                'natural_indicators_teus_aug': ('авг',),
+                'natural_indicators_teus_sep': ('сен',),
+                'natural_indicators_teus_oct': ('окт',),
+                'natural_indicators_teus_nov': ('ноя',),
+                'natural_indicators_teus_dec': ('дек',)
+            }
+        }
+    ),
+])
+def test_group_nested_columns(dkp_instance: DKP, label_name: str, expected: dict) -> None:
+    """
+    Tests the `_group_nested_columns` method.
+
+    This test verifies that the `_group_nested_columns` method correctly groups
+    nested columns from a provided reference dataset. It checks whether the
+    method produces the expected nested dictionary structure based on the given
+    indices for grouping and filtering criteria.
+
+    :param dkp_instance: An instance of the DKP class.
+    :param label_name: The label used to filter the reference data.
+    :param expected: The expected nested dictionary structure after grouping.
+    """
+    block_table_columns: dict = dkp_instance._group_nested_columns(
+        reference=reference_dkp,
+        block_index=0,
+        group_index=3,
+        column_index=2,
+        filter_key=1,
+        filter_value=label_name,
+    )
+    assert block_table_columns == expected
 
 
 def test_is_digit(dkp_instance: DKP) -> None:
@@ -234,13 +366,17 @@ def test_remove_symbols_in_columns(dkp_instance: DKP, input_str: str, expected_r
         "service": None,
         "co_executor": None,
         "reimbursable_sign_76": None,
-        "natural_indicators_teus": None
+        "natural_indicators_teus": None,
+        "profit_plan": None,
+        "costs_plan": None
     }, {
         "natural_indicators_ktk": 0,
         "service": 1,
         "co_executor": 2,
         "reimbursable_sign_76": 3,
-        "natural_indicators_teus": 4
+        "natural_indicators_teus": 4,
+        "profit_plan": 5,
+        "costs_plan": 6
     })
 ])
 def test_get_columns_position(
@@ -263,6 +399,21 @@ def test_get_columns_position(
     headers = getattr(dkp_instance, headers)
     dkp_instance.get_columns_position(row, block_position, headers, dict_columns_position)
     assert dict_columns_position == expected_result
+
+
+@pytest.mark.parametrize("rows, columns_positions, column, expected", [
+    (
+        ["1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ", None, "20"],
+        {"client": 2},
+        'client',
+        "Новые клиенты"
+    )
+])
+def test_extract_value(dkp_instance: DKP, rows: list, columns_positions: dict, column: str, expected: str) -> None:
+    for column, position in columns_positions.items():
+        dkp_instance.dict_columns_position[column] = position
+    result = dkp_instance._extract_value(rows, column)
+    assert result == expected
 
 
 @pytest.mark.parametrize("input_value, expected_output", [
@@ -296,6 +447,46 @@ def test_convert_value(
     """
     result = dkp_instance._convert_value(input_value)
     assert result == expected_output
+
+
+@pytest.mark.parametrize("value_with_field_name, expected", [
+    (("123.45", "profit_plan_jan"), 123.45),
+    (("123", "profit_plan_jan"), 123),
+    ((None, "profit_plan_jan"), None),
+    (("string", "profit_plan_jan"), "string"),
+])
+def test_check_numeric(
+    dkp_instance: DKP,
+    value_with_field_name: tuple,
+    expected: Union[float, str]
+) -> None:
+    """
+    Tests the `_check_numeric` method.
+
+    This test verifies that the method correctly checks if the given value is numeric and returns it as a number.
+    It checks that the method raises a ValueError if the value is None or non-numeric.
+    It checks that the method raises a ValueError with a message indicating that the value is non-numeric.
+
+    The test uses parametrize to test various inputs, and verifies results with assert.
+
+    The test function will be called with the following sets of input arguments:
+
+    *   `("123.45", "profit_plan_jan", 123.45)`
+    *   `("123", "profit_plan_jan", 123)`
+    *   `(None, "profit_plan_jan", None)`
+    *   `("string", "profit_plan_jan", "string")`
+
+    """
+    value, field_name = value_with_field_name
+    if value is None:
+        with pytest.raises(ValueError, match=f"Поле '{field_name}' содержит значение: None"):
+            dkp_instance._check_numeric(value_with_field_name)
+    elif isinstance(value, str) and not value.replace(".", "", 1).isdigit():
+        with pytest.raises(ValueError, match=f"Поле '{field_name}' содержит нечисловое значение: {value}"):
+            dkp_instance._check_numeric(value_with_field_name)
+    else:
+        result = dkp_instance._check_numeric(value_with_field_name)
+        assert result == expected
 
 
 @pytest.mark.parametrize("basename_filename, expected", [
@@ -439,33 +630,76 @@ def validate_record_fields(record: dict, expected_values: dict) -> None:
         assert record[key] == expected_value, f"Mismatch for '{key}': expected {expected_value}, got {record[key]}"
 
 
-@pytest.mark.parametrize(
-    "row, columns_positions, month_string, expected_values", [
-        (
-            ["1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ", None, "20"],
-            {
-                "client": 2,
-                "project": 3,
-                "cargo": 4,
-                "direction": 5,
-                "bay": 6,
-                "owner": 7,
-                "container_size": 8,
-            },
-            "Январь",
-            {
-                "client": "Новые клиенты",
-                "project": "Без проекта",
-                "cargo": "Китай",
-                "direction": "импорт",
-                "bay": "АЧБ",
-                "container_size": 20,
-                "month_string": "Январь",
-                "date": "2024-01-01",
-            },
-        ),
-    ],
-)
+@pytest.mark.parametrize("row, columns_positions, month_string, expected_values", [
+    (
+        [
+            "1", "РУСКОН ООО", "Новые клиенты", "Без проекта", "Китай", "импорт", "АЧБ",
+            None, "20", "Новые клиенты", "20", "Новые клиенты", "20"
+        ],
+        {
+            "client": 2,
+            "project": 3,
+            "cargo": 4,
+            "direction": 5,
+            "bay": 6,
+            "owner": 7,
+            "container_size": 8,
+            "profit_plan_client": 9,
+            "profit_plan_container_size": 10,
+            "costs_plan_client": 11,
+            "costs_plan_container_size": 12,
+        },
+        "Январь",
+        {
+            "client": "Новые клиенты",
+            "project": "Без проекта",
+            "cargo": "Китай",
+            "direction": "импорт",
+            "bay": "АЧБ",
+            "container_size": 20,
+            "profit_plan_client": "Новые клиенты",
+            "profit_plan_container_size": 20,
+            "costs_plan_client": "Новые клиенты",
+            "costs_plan_container_size": 20,
+            "month_string": "Январь",
+            "date": "2024-01-01",
+        },
+    ),
+    (
+        [
+            "1", "РУСКОН ООО", None, "Без проекта", "Китай", "импорт", "АЧБ",
+            None, "20", 0, "20", 0, "20"
+        ],
+        {
+            "client": 2,
+            "project": 3,
+            "cargo": 4,
+            "direction": 5,
+            "bay": 6,
+            "owner": 7,
+            "container_size": 8,
+            "profit_plan_client": 9,
+            "profit_plan_container_size": 10,
+            "costs_plan_client": 11,
+            "costs_plan_container_size": 12,
+        },
+        "Январь",
+        {
+            "client": None,
+            "project": "Без проекта",
+            "cargo": "Китай",
+            "direction": "импорт",
+            "bay": "АЧБ",
+            "container_size": 20,
+            "profit_plan_client": None,
+            "profit_plan_container_size": 20,
+            "costs_plan_client": None,
+            "costs_plan_container_size": 20,
+            "month_string": "Январь",
+            "date": "2024-01-01",
+        },
+    ),
+])
 def test_get_content_in_table(
     dkp_instance: DKP,
     row: list,

@@ -533,14 +533,14 @@ class DKP(object):
                 for key, val in self.block_table_columns["natural_indicators_teus"].items()
                 if month_string in val
             ), None),
-            "profit_plan": self._check_numeric(
+            "profit_plan_thousand_rub": self._check_numeric(
                 next((
                     (self.parse_value(row, key), key)
                     for key, val in self.block_table_columns["profit_plan"].items()
                     if month_string in val
                 ), (None, None))
             ),
-            "costs_plan": self._check_numeric(
+            "costs_plan_thousand_rub": self._check_numeric(
                 next((
                     (self.parse_value(row, key), key)
                     for key, val in self.block_table_columns["costs_plan"].items()
@@ -551,9 +551,9 @@ class DKP(object):
             "original_file_name": self.basename_filename,
             "original_file_parsed_on": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        profit_plan: float = parsed_record.get("profit_plan") or 0
-        costs_plan: float = parsed_record.get("costs_plan") or 0
-        parsed_record["margin_plan"] = profit_plan - costs_plan
+        profit_plan: float = parsed_record.get("profit_plan_thousand_rub") or 0
+        costs_plan: float = parsed_record.get("costs_plan_thousand_rub") or 0
+        parsed_record["margin_plan_thousand_rub"] = profit_plan - costs_plan
 
         fields_check: list = ["client", "container_size"]
         for block_key in [key for key in self.block_table_columns if key not in NOT_COUNT_BLOCK]:

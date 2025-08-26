@@ -40,7 +40,7 @@ MONTH_NAMES: list = ["янв", "фев", "мар", "апр", "май", "июн",
 NUMBER_CLEANING_PATTERN: str = r'\s|,'
 
 
-def send_email_notifiers(message: str, subject: str = "Уведомление от системы экспорта"):
+def send_email_notifiers(message: str, subject: str = "Уведомление от системы DataCore"):
     """
     Отправка email через Mail.ru
     """

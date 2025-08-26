@@ -2,6 +2,7 @@ import os
 import requests
 from requests import Response
 from dotenv import load_dotenv
+from notifiers import get_notifier
 
 load_dotenv()
 
@@ -39,6 +40,28 @@ MONTH_NAMES: list = ["янв", "фев", "мар", "апр", "май", "июн",
 NUMBER_CLEANING_PATTERN: str = r'\s|,'
 
 
+def send_email_notifiers(message: str, subject: str = "Уведомление от системы экспорта"):
+    """
+    Отправка email через Mail.ru
+    """
+    try:
+        email = get_notifier('email')
+        email.notify(
+            to=get_my_env_var('RECIPIENT_EMAIL'),
+            subject=subject,
+            message=message,
+            from_=get_my_env_var('EMAIL_USER'),
+            host='smtp.mail.ru',
+            port=587,
+            username=get_my_env_var('EMAIL_USER'),
+            password=get_my_env_var('EMAIL_PASSWORD'),
+            tls=True
+        )
+        print(f"Email успешно отправлен на {get_my_env_var('RECIPIENT_EMAIL')}")
+    except Exception as e:
+        print(f"Ошибка при отправке email: {e}")
+
+
 def telegram(message) -> int:
     url: str = f"https://api.telegram.org/bot{get_my_env_var('TOKEN_TELEGRAM')}/sendMessage"
     params: dict = {
@@ -47,4 +70,5 @@ def telegram(message) -> int:
         "reply_to_message_id": get_my_env_var('ID')
     }
     response: Response = requests.get(url, params=params)
+    send_email_notifiers(params.get('text'))
     return response.status_code
